@@ -1740,6 +1740,7 @@ a {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
   gap: 10px;
+  align-items: start;
 }
 
 .farmer-form-span {
@@ -2108,6 +2109,7 @@ a {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
   gap: 10px;
+  align-items: start;
 }
 
 .market-media-manager {
@@ -3488,6 +3490,7 @@ a {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
   gap: 10px;
+  align-items: start;
   padding-top: 12px;
   border-top: 1px solid rgba(11, 11, 11, 0.08);
 }
@@ -8359,6 +8362,7 @@ a {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
+  align-items: start;
 }
 
 .auth-form-grid .auth-span-2 {
