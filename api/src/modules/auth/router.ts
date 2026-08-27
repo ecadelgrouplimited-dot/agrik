@@ -21,6 +21,7 @@ function toAuthUserOut(user: {
   status: string;
   verificationStatus: string;
   createdAt: Date;
+  identity?: { fullName: string } | null;
 }) {
   return {
     id: user.id,
@@ -30,6 +31,7 @@ function toAuthUserOut(user: {
     status: user.status,
     verification_status: user.verificationStatus,
     created_at: user.createdAt.toISOString(),
+    full_name: user.identity?.fullName ?? null,
   };
 }
 
@@ -142,7 +144,7 @@ router.post(
     if (!body.password) throw badRequest("password is required");
 
     const phone = normalizePhone(body.phone);
-    const user = await prisma.user.findUnique({ where: { phone } });
+    const user = await prisma.user.findUnique({ where: { phone }, include: { identity: true } });
     if (!user) throw unauthorized("Invalid phone number or password.");
 
     const valid = await verifyPassword(body.password, user.passwordHash);
@@ -198,7 +200,7 @@ router.post(
       console.error("Failed to send welcome email", err);
     }
 
-    const refreshed = await prisma.user.findUniqueOrThrow({ where: { id: user.id } });
+    const refreshed = await prisma.user.findUniqueOrThrow({ where: { id: user.id }, include: { identity: true } });
     const token = signUserToken(user.id);
     res.json({ token, user: toAuthUserOut(refreshed) });
   })
@@ -211,7 +213,7 @@ router.post(
   asyncHandler(async (req, res) => {
     const body = resendSchema.parse(req.body);
     const email = normalizeEmail(body.email);
-    const user = await prisma.user.findUnique({ where: { email } });
+    const user = await prisma.user.findUnique({ where: { email }, include: { identity: true } });
     if (!user) throw notFound("Account not found.");
     if (user.verificationStatus === "verified") {
       res.json({ status: "already_verified", message: "This account is already verified." });
@@ -276,7 +278,7 @@ router.post(
       prisma.user.update({ where: { id: user.id }, data: { passwordHash } }),
     ]);
 
-    const refreshed = await prisma.user.findUniqueOrThrow({ where: { id: user.id } });
+    const refreshed = await prisma.user.findUniqueOrThrow({ where: { id: user.id }, include: { identity: true } });
     const token = signUserToken(user.id);
     res.json({ token, user: toAuthUserOut(refreshed) });
   })
@@ -286,7 +288,7 @@ router.get(
   "/me",
   requireAuth,
   asyncHandler(async (req, res) => {
-    const user = await prisma.user.findUnique({ where: { id: req.userId! } });
+    const user = await prisma.user.findUnique({ where: { id: req.userId! }, include: { identity: true } });
     if (!user) throw notFound("Account not found.");
     res.json(toAuthUserOut(user));
   })

@@ -1591,6 +1591,49 @@ a {
   transform: translateX(18px);
 }
 
+.farm-location-list {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.farm-location-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(11, 11, 11, 0.08);
+  background: rgba(31, 111, 61, 0.04);
+  flex-wrap: wrap;
+}
+
+.farm-location-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-weight: 700;
+  font-size: 13px;
+}
+
+.farm-location-place {
+  color: rgba(11, 11, 11, 0.62);
+  font-size: 13px;
+}
+
+.settings-empty-state {
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+  padding: 28px 16px;
+  border: 1px dashed rgba(11, 11, 11, 0.16);
+  border-radius: 14px;
+  text-align: center;
+  color: rgba(11, 11, 11, 0.6);
+  margin-bottom: 12px;
+}
+
 .farmer-service-preview-card,
 .farmer-service-card,
 .farmer-plan-card {

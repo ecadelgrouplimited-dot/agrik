@@ -74,7 +74,7 @@ export default function FarmerLayout() {
               </NavLink>
             </div>
             <div className="farmer-account-pill">
-              <div className="farmer-account-name">{user?.phone ?? "Farmer"}</div>
+              <div className="farmer-account-name">{user?.full_name || user?.phone || "Farmer"}</div>
               <div className="farmer-account-role">{user?.role?.replace(/_/g, " ") ?? "farmer"}</div>
             </div>
             <button className="btn ghost small" type="button" onClick={logout}>

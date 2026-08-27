@@ -10,6 +10,7 @@ export type AuthUser = {
   status?: string;
   verification_status?: string;
   created_at?: string;
+  full_name?: string | null;
 };
 
 type AuthActionResult = {

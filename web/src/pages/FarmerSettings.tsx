@@ -1,8 +1,17 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { Icon } from "../components/Visuals";
-import { api, type UgandaDistrictOut } from "../lib/api";
+import { api } from "../lib/api";
 
 type StatusMessage = { type: "info" | "error"; message: string };
+
+type FarmLocation = {
+  id: string;
+  name: string;
+  district: string;
+  parish: string;
+  isPrimary: boolean;
+};
 
 const LANGUAGE_OPTIONS = [
   { id: "auto", label: "Auto detect" },
@@ -17,8 +26,29 @@ function toStringValue(value: unknown): string {
   return typeof value === "string" ? value.trim() : "";
 }
 
-function uniqueValues(values: string[]): string[] {
-  return Array.from(new Set(values.filter(Boolean)));
+function asRecord(value: unknown): Record<string, unknown> {
+  return value && typeof value === "object" && !Array.isArray(value) ? (value as Record<string, unknown>) : {};
+}
+
+function parseFarmUnits(soilProfile: Record<string, unknown>): FarmLocation[] {
+  const raw = soilProfile.farm_units;
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .map((entry) => {
+      const row = asRecord(entry);
+      const name = toStringValue(row.name);
+      const district = toStringValue(row.district);
+      const parish = toStringValue(row.parish);
+      if (!name && !district) return null;
+      return {
+        id: toStringValue(row.id) || name,
+        name: name || "Unnamed farm",
+        district,
+        parish,
+        isPrimary: Boolean(row.is_primary),
+      };
+    })
+    .filter((item): item is FarmLocation => item != null);
 }
 
 export default function FarmerSettings() {
@@ -26,13 +56,8 @@ export default function FarmerSettings() {
   const [saving, setSaving] = useState(false);
   const [status, setStatus] = useState<StatusMessage | null>(null);
 
-  const [districts, setDistricts] = useState<UgandaDistrictOut[]>([]);
-  const [parishOptions, setParishOptions] = useState<string[]>([]);
-  const [loadingParishes, setLoadingParishes] = useState(false);
-
+  const [farms, setFarms] = useState<FarmLocation[]>([]);
   const [preferredLanguage, setPreferredLanguage] = useState("auto");
-  const [district, setDistrict] = useState("");
-  const [parish, setParish] = useState("");
   const [weatherAlerts, setWeatherAlerts] = useState(true);
   const [priceAlerts, setPriceAlerts] = useState(true);
   const [smsOptIn, setSmsOptIn] = useState(false);
@@ -40,13 +65,11 @@ export default function FarmerSettings() {
 
   useEffect(() => {
     let active = true;
-    Promise.all([api.referenceDistricts(), api.userSettings()])
-      .then(([districtRes, settingsRes]) => {
+    Promise.all([api.profileDetails(), api.userSettings()])
+      .then(([profileRes, settingsRes]) => {
         if (!active) return;
-        setDistricts(districtRes.items ?? []);
+        setFarms(parseFarmUnits(profileRes.farm.soil_profile));
         setPreferredLanguage(settingsRes.preferred_language || "auto");
-        setDistrict(settingsRes.district || "");
-        setParish(settingsRes.parish || "");
         setWeatherAlerts(settingsRes.weather_alerts);
         setPriceAlerts(settingsRes.price_alerts);
         setSmsOptIn(settingsRes.sms_opt_in);
@@ -61,38 +84,12 @@ export default function FarmerSettings() {
     };
   }, []);
 
-  useEffect(() => {
-    let active = true;
-    if (!district) {
-      setParishOptions([]);
-      return;
-    }
-    setLoadingParishes(true);
-    api
-      .referenceParishes(district)
-      .then((res) => {
-        if (!active) return;
-        setParishOptions(uniqueValues((res.items ?? []).map((item) => toStringValue(item.name))));
-      })
-      .catch(() => {
-        if (active) setParishOptions([]);
-      })
-      .finally(() => {
-        if (active) setLoadingParishes(false);
-      });
-    return () => {
-      active = false;
-    };
-  }, [district]);
-
   const handleSave = async () => {
     setSaving(true);
     setStatus(null);
     try {
       await api.updateSettings({
         preferred_language: preferredLanguage,
-        district: district || null,
-        parish: parish || null,
         weather_alerts: weatherAlerts,
         price_alerts: priceAlerts,
         sms_opt_in: smsOptIn,
@@ -105,6 +102,8 @@ export default function FarmerSettings() {
       setSaving(false);
     }
   };
+
+  const primaryFarm = farms.find((farm) => farm.isPrimary) ?? farms[0] ?? null;
 
   if (loading) return <section className="farmer-page">Loading settings...</section>;
 
@@ -127,49 +126,44 @@ export default function FarmerSettings() {
             <span className="section-icon">
               <Icon name="location" size={18} />
             </span>
-            <h3>Location</h3>
+            <h3>Farm locations</h3>
           </div>
+          <Link className="btn ghost small" to="/dashboard/farm">
+            <Icon name="farm" size={14} />
+            Manage farms
+          </Link>
         </div>
-        <p className="muted">Powers weather forecasts, price matching, and the live district map.</p>
-        <div className="farmer-form-grid">
-          <label className="field">
-            District
-            <select
-              value={district}
-              onChange={(event) => {
-                setDistrict(event.target.value);
-                setParish("");
-              }}
-            >
-              <option value="">Select district</option>
-              {districts.map((item) => (
-                <option key={item.id} value={item.name}>
-                  {item.name}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="field">
-            Parish
-            {parishOptions.length > 0 ? (
-              <select value={parish} onChange={(event) => setParish(event.target.value)} disabled={!district || loadingParishes}>
-                <option value="">{loadingParishes ? "Loading..." : "Select parish"}</option>
-                {parishOptions.map((option) => (
-                  <option key={option} value={option}>
-                    {option}
-                  </option>
-                ))}
-              </select>
-            ) : (
-              <input
-                value={parish}
-                onChange={(event) => setParish(event.target.value)}
-                placeholder={district ? "Type your parish" : "Select a district first"}
-                disabled={!district}
-              />
-            )}
-          </label>
-        </div>
+        <p className="muted">
+          Weather and price matching use your primary farm&apos;s location. Each farm keeps its own district and parish —
+          set them per farm in Farm Workspace, not here.
+        </p>
+        {farms.length === 0 ? (
+          <div className="settings-empty-state">
+            <Icon name="farm" size={22} />
+            <p>No farms yet. Add one to set a location.</p>
+            <Link className="btn small" to="/dashboard/farm/create">
+              Create your first farm
+            </Link>
+          </div>
+        ) : (
+          <div className="farm-location-list">
+            {farms.map((farm) => (
+              <div key={farm.id} className="farm-location-row">
+                <span className="farm-location-name">
+                  <Icon name="farm" size={14} />
+                  {farm.name}
+                  {farm.isPrimary ? <span className="pill">primary</span> : null}
+                </span>
+                <span className="farm-location-place">{[farm.parish, farm.district].filter(Boolean).join(", ") || "Location not set"}</span>
+              </div>
+            ))}
+          </div>
+        )}
+        {primaryFarm ? (
+          <div className="field-note">
+            Currently using <strong>{primaryFarm.name}</strong>&apos;s location ({[primaryFarm.parish, primaryFarm.district].filter(Boolean).join(", ") || "not set"}) for weather.
+          </div>
+        ) : null}
       </section>
 
       <section className="farmer-card">
@@ -208,7 +202,7 @@ export default function FarmerSettings() {
           <label className="settings-toggle-row">
             <div>
               <strong>Weather alerts</strong>
-              <span className="muted">Rain windows and risk warnings for your district.</span>
+              <span className="muted">Rain windows and risk warnings for your primary farm.</span>
             </div>
             <input type="checkbox" checked={weatherAlerts} onChange={(event) => setWeatherAlerts(event.target.checked)} />
           </label>

@@ -60,7 +60,7 @@ export default function BuyerLayout() {
           </div>
           <div className="farmer-topbar-actions">
             <div className="farmer-account-pill">
-              <div className="farmer-account-name">{user?.phone ?? "Buyer"}</div>
+              <div className="farmer-account-name">{user?.full_name || user?.phone || "Buyer"}</div>
               <div className="farmer-account-role">{user?.role?.replace(/_/g, " ") ?? "buyer"}</div>
             </div>
             <button className="btn ghost small" type="button" onClick={logout}>

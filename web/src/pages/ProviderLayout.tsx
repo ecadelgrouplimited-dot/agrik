@@ -67,7 +67,7 @@ export default function ProviderLayout() {
           </div>
           <div className="farmer-topbar-actions">
             <div className="farmer-account-pill">
-              <div className="farmer-account-name">{user?.phone ?? "Provider"}</div>
+              <div className="farmer-account-name">{user?.full_name || user?.phone || "Provider"}</div>
               <div className="farmer-account-role">{user?.role?.replace(/_/g, " ") ?? "service provider"}</div>
             </div>
             <button className="btn ghost small" type="button" onClick={logout}>

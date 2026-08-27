@@ -43,6 +43,7 @@ export type AuthUserOut = {
   status: string;
   verification_status: string;
   created_at: string;
+  full_name?: string | null;
 };
 
 export type AuthRegisterPayload = {
