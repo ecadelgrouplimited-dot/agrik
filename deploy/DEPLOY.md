@@ -91,16 +91,43 @@ VITE_API_BASE_URL=https://api.agrik.co npm ci && npm run build
 ## 6. systemd + nginx
 
 ```bash
+mkdir -p /var/www/agrik/api/uploads && chown agrik:agrik /var/www/agrik/api/uploads
+
 sudo cp deploy/agrik-api.service /etc/systemd/system/agrik-api.service
 sudo systemctl daemon-reload
 sudo systemctl enable --now agrik-api
+curl -s http://127.0.0.1:8000/health   # sanity check before wiring nginx
+```
 
-sudo cp deploy/agrik.nginx.conf /etc/nginx/sites-available/agrik.co.conf
+`deploy/agrik.nginx.conf` in this repo is the **post-certbot** reference copy
+— it already has `listen 443 ssl` and cert paths that don't exist yet on a
+fresh box, so installing it as-is first will fail `nginx -t`. Bootstrap
+without the SSL lines, let certbot fill them in, matching how this was
+actually done on 72.62.185.212:
+
+```bash
+# Strip everything from "listen 443 ssl" through the ssl_dhparam line in each
+# server block, and drop the two standalone http->https redirect blocks —
+# certbot adds its own. Install what's left as a plain port-80 config:
+sudo cp <your-stripped-copy> /etc/nginx/sites-available/agrik.co.conf
 sudo ln -s /etc/nginx/sites-available/agrik.co.conf /etc/nginx/sites-enabled/
 sudo nginx -t && sudo systemctl reload nginx
+curl -s http://agrik.co/ -o /dev/null -w '%{http_code}\n'        # expect 200
+curl -s http://api.agrik.co/health                                # expect {"status":"ok"}
 
-sudo certbot --nginx -d agrik.co -d www.agrik.co -d api.agrik.co
+sudo certbot --nginx -d agrik.co -d www.agrik.co -d api.agrik.co --redirect
 ```
+
+Certbot rewrites `/etc/nginx/sites-enabled/agrik.co.conf` in place, adding the
+SSL directives and its own redirect blocks — the result should match
+`deploy/agrik.nginx.conf` in this repo.
+
+**Permissions gotcha hit during deploy**: `adduser --system --group --home`
+creates the home directory as `750`, which blocks nginx's `www-data` from
+even traversing into it to serve static files (`stat() ... Permission
+denied` in `/var/log/nginx/error.log`, manifesting as a 500, not a 403). Fix:
+`chmod 755 /var/www/agrik` — the `.env` file underneath stays `600` since
+nginx never touches it directly (only the `agrik`-user Node process does).
 
 ## 7. Verify
 
