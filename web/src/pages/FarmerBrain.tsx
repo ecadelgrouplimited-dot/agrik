@@ -464,6 +464,7 @@ export default function FarmerBrain() {
   const [cropHint, setCropHint] = useState<string>("");
   const [modelPreference, setModelPreference] = useState<string>("auto");
   const [deepAnalysis, setDeepAnalysis] = useState(false);
+  const [optionsOpen, setOptionsOpen] = useState(false);
   const [sttBusy, setSttBusy] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [recordingElapsed, setRecordingElapsed] = useState(0);
@@ -756,22 +757,10 @@ export default function FarmerBrain() {
     const farmPrompts = (profile?.farm.crops ?? []).slice(0, 2).map((crop) => `Give me a weekly protection checklist for ${crop}.`);
     const followUps = latestAssistantFollowUps.slice(0, 3);
     if (followUps.length > 0) {
-      return Array.from(new Set([...followUps, ...farmPrompts])).slice(0, 8);
+      return Array.from(new Set([...followUps, ...farmPrompts])).slice(0, 4);
     }
-    return Array.from(new Set([...farmPrompts, ...starterPrompts])).slice(0, 8);
+    return Array.from(new Set([...farmPrompts, ...starterPrompts])).slice(0, 4);
   }, [latestAssistantFollowUps, profile?.farm.crops]);
-  const assistantMessageCount = useMemo(
-    () => activeMessages.filter((message) => message.role === "assistant").length,
-    [activeMessages]
-  );
-  const groundedMessageCount = useMemo(
-    () => activeMessages.filter((message) => message.role === "assistant" && (message.citations?.length ?? 0) > 0).length,
-    [activeMessages]
-  );
-  const mediaMessageCount = useMemo(
-    () => activeMessages.filter((message) => Boolean(message.media_analysis)).length,
-    [activeMessages]
-  );
   const contextCoverageCount = [
     Boolean(locationHint || weather?.location_name),
     Boolean((profile?.farm.crops ?? []).length),
@@ -2454,50 +2443,6 @@ export default function FarmerBrain() {
             ))}
           </div>
 
-          <div className="grik-session-metrics">
-            <article className="grik-session-metric-card">
-              <span className="label">Chats</span>
-              <strong>{conversations.length}</strong>
-              <span className="muted">Saved threads</span>
-            </article>
-            <article className="grik-session-metric-card">
-              <span className="label">Replies</span>
-              <strong>{assistantMessageCount}</strong>
-              <span className="muted">GRIK responses</span>
-            </article>
-            <article className="grik-session-metric-card">
-              <span className="label">Evidence</span>
-              <strong>{groundedMessageCount}</strong>
-              <span className="muted">Grounded turns</span>
-            </article>
-            <article className="grik-session-metric-card">
-              <span className="label">Media</span>
-              <strong>{mediaMessageCount}</strong>
-              <span className="muted">Analyzed turns</span>
-            </article>
-          </div>
-
-          <div className="farmer-card-header">
-            <div>
-              <div className="label">Smart prompts</div>
-              <h3>Quick starts</h3>
-            </div>
-          </div>
-
-          <div className="grik-prompt-grid">
-            {promptSuggestions.map((prompt) => (
-              <button
-                key={prompt}
-                className="grik-prompt-card"
-                type="button"
-                title={prompt}
-                disabled={sending || mediaBusy || sttBusy || isRecording || realtimeListening}
-                onClick={() => void ask(prompt, buildMediaAskOptions())}
-              >
-                {prompt}
-              </button>
-            ))}
-          </div>
 
           <FarmerBrainMessageStream
             activeConversationTitle={activeConversation?.title ?? "New conversation"}
@@ -2526,244 +2471,22 @@ export default function FarmerBrain() {
 
           <div className="chat-input grik-composer">
             <div className="grik-composer-shell">
-              <div className="grik-composer-head">
-                <div>
-                  <div className="label">Ask GRIK</div>
-                  <h3>Text, voice, photo, or short video</h3>
-                  <p className="muted">Capture what you see, add context, then send once.</p>
+              {activeMessages.length === 0 && promptSuggestions.length > 0 ? (
+                <div className="grik-suggestion-chips">
+                  {promptSuggestions.map((prompt) => (
+                    <button
+                      key={prompt}
+                      className="grik-suggestion-chip"
+                      type="button"
+                      title={prompt}
+                      disabled={sending || mediaBusy || sttBusy || isRecording || realtimeListening}
+                      onClick={() => void ask(prompt, buildMediaAskOptions())}
+                    >
+                      {prompt}
+                    </button>
+                  ))}
                 </div>
-                {attachedFileCount > 0 ? (
-                  <button
-                    className="btn ghost small"
-                    type="button"
-                    onClick={clearMediaAttachments}
-                    disabled={sending || mediaBusy || sttBusy || isRecording || realtimeListening}
-                  >
-                    <Icon name="trash" size={13} />
-                    Clear media
-                  </button>
-                ) : null}
-              </div>
-
-              <div className="grik-input-mode-grid">
-                <label className="grik-mode-card">
-                  <span className="grik-mode-icon">
-                    <Icon name="voice" size={16} />
-                  </span>
-                  <strong>Upload audio</strong>
-                  <span>Turn speech into text.</span>
-                  <input
-                    type="file"
-                    accept="audio/*"
-                    onChange={handleAudioSelection}
-                    disabled={sending || mediaBusy || sttBusy || isRecording || realtimeListening}
-                  />
-                </label>
-
-                <button
-                  className={`grik-mode-card ${isRecording ? "is-recording" : ""}`}
-                  type="button"
-                  onClick={() => {
-                    if (isRecording) {
-                      stopVoiceRecording();
-                      return;
-                    }
-                    void startVoiceRecording(recordAndSendMode);
-                  }}
-                  disabled={sending || mediaBusy || sttBusy || realtimeListening}
-                >
-                  <span className="grik-mode-icon">
-                    <Icon name={isRecording ? "stop" : "voice"} size={16} />
-                  </span>
-                  <strong>{isRecording ? "Stop recording" : "Record note"}</strong>
-                  <span>{recordAndSendMode ? "One tap sends after recording." : `Up to ${MAX_RECORDING_SECONDS}s voice note.`}</span>
-                </button>
-
-                <button
-                  className={`grik-mode-card ${realtimeModalOpen && realtimeConnected ? "is-active" : ""}`}
-                  type="button"
-                  onClick={() => {
-                    if (realtimeModalOpen) {
-                      closeRealtimeVoiceModal();
-                      return;
-                    }
-                    void openRealtimeVoiceModal();
-                  }}
-                  disabled={sending || mediaBusy || sttBusy || isRecording}
-                >
-                  <span className="grik-mode-icon">
-                    <Icon name="wave" size={16} />
-                  </span>
-                  <strong>{realtimeModalOpen ? "Live voice open" : "Live voice"}</strong>
-                  <span>Hands-free back-and-forth in the field.</span>
-                </button>
-
-                <button
-                  className={`grik-mode-card ${recordAndSendMode ? "is-active" : ""}`}
-                  type="button"
-                  onClick={() => setRecordAndSendMode((prev) => !prev)}
-                  disabled={sending || mediaBusy || sttBusy || isRecording || realtimeListening}
-                >
-                  <span className="grik-mode-icon">
-                    <Icon name="send" size={16} />
-                  </span>
-                  <strong>One-tap send</strong>
-                  <span>{recordAndSendMode ? "Enabled for quick voice turns." : "Auto-send after short voice capture."}</span>
-                </button>
-
-                <label className="grik-mode-card">
-                  <span className="grik-mode-icon">
-                    <Icon name="upload" size={16} />
-                  </span>
-                  <strong>Upload photos</strong>
-                  <span>Add one or more field images.</span>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    multiple
-                    onChange={handleImageSelection}
-                    disabled={sending || mediaBusy || sttBusy || isRecording || realtimeListening}
-                  />
-                </label>
-
-                <label className="grik-mode-card">
-                  <span className="grik-mode-icon">
-                    <Icon name="camera" size={16} />
-                  </span>
-                  <strong>Capture photo</strong>
-                  <span>Use the phone camera now.</span>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    capture="environment"
-                    onChange={handleImageSelection}
-                    disabled={sending || mediaBusy || sttBusy || isRecording || realtimeListening}
-                  />
-                </label>
-
-                <label className="grik-mode-card">
-                  <span className="grik-mode-icon">
-                    <Icon name="video" size={16} />
-                  </span>
-                  <strong>Upload video</strong>
-                  <span>Short clip, max {MAX_VIDEO_SECONDS}s.</span>
-                  <input
-                    type="file"
-                    accept="video/*"
-                    onChange={(event) => {
-                      void handleVideoSelection(event);
-                    }}
-                    disabled={sending || mediaBusy || sttBusy || isRecording || realtimeListening}
-                  />
-                </label>
-
-                <label className="grik-mode-card">
-                  <span className="grik-mode-icon">
-                    <Icon name="video" size={16} />
-                  </span>
-                  <strong>Capture video</strong>
-                  <span>Record a short field clip.</span>
-                  <input
-                    type="file"
-                    accept="video/*"
-                    capture="environment"
-                    onChange={(event) => {
-                      void handleVideoSelection(event);
-                    }}
-                    disabled={sending || mediaBusy || sttBusy || isRecording || realtimeListening}
-                  />
-                </label>
-              </div>
-
-              <div className="grik-composer-summary-row">
-                <article className="grik-summary-card">
-                  <span className="label">Media</span>
-                  <strong>{attachedFileCount > 0 ? mediaAttachmentLabel : "No attachments yet"}</strong>
-                  <span className="muted">Up to {MAX_MEDIA_FILES} files total.</span>
-                </article>
-                <article className="grik-summary-card">
-                  <span className="label">Voice</span>
-                  <strong>{selectedVoiceProfile.label}</strong>
-                  <span className="muted">{autoSpeakReplies ? "Replies can play automatically." : "Reply playback is manual."}</span>
-                </article>
-                <article className="grik-summary-card">
-                  <span className="label">Analysis</span>
-                  <strong>{deepAnalysis ? "Deep review on" : "Fast review on"}</strong>
-                  <span className="muted">{selectedModelTip}</span>
-                </article>
-              </div>
-
-              <div className="grik-media-config-row">
-                <label className="grik-media-config-field">
-                  Crop
-                  <select value={cropHint} onChange={(event) => setCropHint(event.target.value)} disabled={sending || mediaBusy || sttBusy || isRecording || realtimeListening}>
-                    <option value="">Auto from profile</option>
-                    {cropOptions.map((crop) => (
-                      <option key={crop} value={crop}>
-                        {crop}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label className="grik-media-config-field">
-                  Vision model
-                  <select
-                    value={modelPreference}
-                    onChange={(event) => setModelPreference(event.target.value)}
-                    disabled={sending || mediaBusy || sttBusy || isRecording || realtimeListening}
-                  >
-                    {visionModelOptions.map((model) => (
-                      <option key={model.id} value={model.id}>
-                        {model.label}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label className="grik-media-config-field">
-                  Voice profile
-                  <select
-                    value={ttsVoiceProfile}
-                    onChange={(event) => {
-                      const next = String(event.target.value || "").trim().toLowerCase();
-                      if (isVoiceProfile(next)) {
-                        setTtsVoiceProfile(next);
-                      }
-                    }}
-                    disabled={sending || mediaBusy || sttBusy || isRecording || realtimeListening}
-                  >
-                    {VOICE_PROFILE_OPTIONS.map((profileOption) => (
-                      <option key={profileOption.id} value={profileOption.id}>
-                        {profileOption.label}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label className="grik-media-check">
-                  <input
-                    type="checkbox"
-                    checked={deepAnalysis}
-                    onChange={(event) => setDeepAnalysis(event.target.checked)}
-                    disabled={sending || mediaBusy || sttBusy || isRecording || realtimeListening}
-                  />
-                  Deep analysis
-                </label>
-                <label className="grik-media-check">
-                  <input
-                    type="checkbox"
-                    checked={autoSpeakReplies}
-                    onChange={() => setAutoSpeakReplies((prev) => !prev)}
-                    disabled={sending || mediaBusy || sttBusy || isRecording || realtimeListening}
-                  />
-                  Auto-play replies
-                </label>
-              </div>
-
-              <div className="grik-note-strip">
-                <span>{selectedModelTip}</span>
-                <span>Voice notes can run up to {MAX_RECORDING_SECONDS}s.</span>
-                <span>One-tap send auto-stops after {AUTO_RECORD_AND_SEND_SECONDS}s.</span>
-                <span>Video becomes {VIDEO_FRAME_COUNT} still frames.</span>
-              </div>
+              ) : null}
 
               {isRecording || videoFileName || mediaError || audioError || audioStatus || realtimePartialTranscript ? (
                 <div className="grik-composer-status-row">
@@ -2798,18 +2521,127 @@ export default function FarmerBrain() {
                       <span className="grik-media-preview-label">Video frame {index + 1}</span>
                     </div>
                   ))}
+                  <button
+                    className="btn ghost tiny grik-clear-media-btn"
+                    type="button"
+                    onClick={clearMediaAttachments}
+                    disabled={sending || mediaBusy || sttBusy || isRecording || realtimeListening}
+                  >
+                    <Icon name="trash" size={12} />
+                    Clear
+                  </button>
                 </div>
               ) : null}
 
               <textarea
-                placeholder="Example: My cassava leaves are curling with white spots. Give immediate actions and what to check over the next 7 days."
+                placeholder="Ask GRIK anything about your crops, weather, or farm..."
                 value={input}
                 onChange={(event) => setInput(event.target.value)}
                 onKeyDown={onComposerKeyDown}
-                rows={4}
+                rows={3}
               />
 
-              <div className="grik-composer-actions">
+              <div className="grik-composer-toolbar">
+                <div className="grik-tool-row">
+                  <label className="grik-tool-btn" title="Upload audio">
+                    <Icon name="upload" size={16} />
+                    <input
+                      type="file"
+                      accept="audio/*"
+                      onChange={handleAudioSelection}
+                      disabled={sending || mediaBusy || sttBusy || isRecording || realtimeListening}
+                    />
+                  </label>
+
+                  <button
+                    className={`grik-tool-btn ${isRecording ? "is-recording" : ""}`}
+                    type="button"
+                    title={isRecording ? "Stop recording" : "Record voice note"}
+                    onClick={() => {
+                      if (isRecording) {
+                        stopVoiceRecording();
+                        return;
+                      }
+                      void startVoiceRecording(recordAndSendMode);
+                    }}
+                    disabled={sending || mediaBusy || sttBusy || realtimeListening}
+                  >
+                    <Icon name={isRecording ? "stop" : "voice"} size={16} />
+                  </button>
+
+                  <button
+                    className={`grik-tool-btn ${realtimeModalOpen && realtimeConnected ? "is-active" : ""}`}
+                    type="button"
+                    title={realtimeModalOpen ? "Close live voice" : "Live voice"}
+                    onClick={() => {
+                      if (realtimeModalOpen) {
+                        closeRealtimeVoiceModal();
+                        return;
+                      }
+                      void openRealtimeVoiceModal();
+                    }}
+                    disabled={sending || mediaBusy || sttBusy || isRecording}
+                  >
+                    <Icon name="wave" size={16} />
+                  </button>
+
+                  <label className="grik-tool-btn" title="Upload photos">
+                    <Icon name="upload" size={16} />
+                    <input
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      onChange={handleImageSelection}
+                      disabled={sending || mediaBusy || sttBusy || isRecording || realtimeListening}
+                    />
+                  </label>
+
+                  <label className="grik-tool-btn" title="Capture photo">
+                    <Icon name="camera" size={16} />
+                    <input
+                      type="file"
+                      accept="image/*"
+                      capture="environment"
+                      onChange={handleImageSelection}
+                      disabled={sending || mediaBusy || sttBusy || isRecording || realtimeListening}
+                    />
+                  </label>
+
+                  <label className="grik-tool-btn" title={`Upload video (max ${MAX_VIDEO_SECONDS}s)`}>
+                    <Icon name="video" size={16} />
+                    <input
+                      type="file"
+                      accept="video/*"
+                      onChange={(event) => {
+                        void handleVideoSelection(event);
+                      }}
+                      disabled={sending || mediaBusy || sttBusy || isRecording || realtimeListening}
+                    />
+                  </label>
+
+                  <label className="grik-tool-btn" title={`Capture video (max ${MAX_VIDEO_SECONDS}s)`}>
+                    <Icon name="video" size={16} />
+                    <input
+                      type="file"
+                      accept="video/*"
+                      capture="environment"
+                      onChange={(event) => {
+                        void handleVideoSelection(event);
+                      }}
+                      disabled={sending || mediaBusy || sttBusy || isRecording || realtimeListening}
+                    />
+                  </label>
+
+                  <button
+                    className={`grik-tool-btn ${optionsOpen ? "is-active" : ""}`}
+                    type="button"
+                    title="Options"
+                    onClick={() => setOptionsOpen((prev) => !prev)}
+                  >
+                    <Icon name="settings" size={16} />
+                  </button>
+                </div>
+
                 <button
                   className="btn grik-send-btn"
                   type="button"
@@ -2818,23 +2650,94 @@ export default function FarmerBrain() {
                 >
                   <Icon name="send" size={15} />
                   {mediaBusy
-                    ? "Preparing media..."
+                    ? "Preparing..."
                     : isRecording
                       ? "Recording..."
                       : realtimeListening
-                        ? "Live voice running..."
+                        ? "Live..."
                         : sttBusy
                           ? "Transcribing..."
                           : sending
                             ? "Analyzing..."
-                            : "Send to GRIK"}
+                            : "Send"}
                 </button>
-                <p className="muted">
-                  {attachedFileCount > 0
-                    ? "Attached media will be analyzed together with your question."
-                    : "Tip: add photos or voice when symptoms are hard to describe."}
-                </p>
               </div>
+
+              {optionsOpen ? (
+                <div className="grik-options-panel">
+                  <label className="grik-media-config-field">
+                    Crop
+                    <select value={cropHint} onChange={(event) => setCropHint(event.target.value)} disabled={sending || mediaBusy || sttBusy || isRecording || realtimeListening}>
+                      <option value="">Auto from profile</option>
+                      {cropOptions.map((crop) => (
+                        <option key={crop} value={crop}>
+                          {crop}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="grik-media-config-field" title={selectedModelTip}>
+                    Vision model
+                    <select
+                      value={modelPreference}
+                      onChange={(event) => setModelPreference(event.target.value)}
+                      disabled={sending || mediaBusy || sttBusy || isRecording || realtimeListening}
+                    >
+                      {visionModelOptions.map((model) => (
+                        <option key={model.id} value={model.id}>
+                          {model.label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="grik-media-config-field">
+                    Voice profile
+                    <select
+                      value={ttsVoiceProfile}
+                      onChange={(event) => {
+                        const next = String(event.target.value || "").trim().toLowerCase();
+                        if (isVoiceProfile(next)) {
+                          setTtsVoiceProfile(next);
+                        }
+                      }}
+                      disabled={sending || mediaBusy || sttBusy || isRecording || realtimeListening}
+                    >
+                      {VOICE_PROFILE_OPTIONS.map((profileOption) => (
+                        <option key={profileOption.id} value={profileOption.id}>
+                          {profileOption.label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="grik-media-check">
+                    <input
+                      type="checkbox"
+                      checked={deepAnalysis}
+                      onChange={(event) => setDeepAnalysis(event.target.checked)}
+                      disabled={sending || mediaBusy || sttBusy || isRecording || realtimeListening}
+                    />
+                    Deep analysis
+                  </label>
+                  <label className="grik-media-check">
+                    <input
+                      type="checkbox"
+                      checked={autoSpeakReplies}
+                      onChange={() => setAutoSpeakReplies((prev) => !prev)}
+                      disabled={sending || mediaBusy || sttBusy || isRecording || realtimeListening}
+                    />
+                    Auto-play replies
+                  </label>
+                  <label className="grik-media-check">
+                    <input
+                      type="checkbox"
+                      checked={recordAndSendMode}
+                      onChange={() => setRecordAndSendMode((prev) => !prev)}
+                      disabled={sending || mediaBusy || sttBusy || isRecording || realtimeListening}
+                    />
+                    One-tap send after recording
+                  </label>
+                </div>
+              ) : null}
             </div>
           </div>
         </section>

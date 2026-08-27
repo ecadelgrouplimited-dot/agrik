@@ -3301,8 +3301,7 @@ a {
 
 .grik-page-actions .btn,
 .grik-toolbar .btn,
-.grik-composer-head .btn,
-.grik-composer-actions .btn {
+.grik-composer-toolbar .btn {
   display: inline-flex;
   align-items: center;
   gap: 8px;
@@ -3358,57 +3357,32 @@ a {
   justify-content: space-between;
 }
 
-.grik-session-metrics {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
-  gap: 10px;
-}
-
-.grik-session-metric-card {
-  display: grid;
-  gap: 6px;
-  padding: 12px 14px;
-  border-radius: 16px;
-  border: 1px solid rgba(11, 11, 11, 0.08);
-  background: linear-gradient(180deg, rgba(31, 111, 61, 0.07), rgba(255, 255, 255, 0.92));
-}
-
-.grik-session-metric-card strong {
-  font-size: 24px;
-  line-height: 1;
-  color: var(--color-primary);
-}
-
-.grik-prompt-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 10px;
-}
-
-.grik-prompt-card {
+.grik-suggestion-chips {
   display: flex;
-  align-items: flex-start;
-  padding: 12px 14px;
-  min-height: 68px;
-  border-radius: 16px;
-  border: 1px solid rgba(11, 11, 11, 0.1);
-  background: rgba(255, 255, 255, 0.92);
-  text-align: left;
-  font: inherit;
-  color: inherit;
-  line-height: 1.45;
-  white-space: normal;
-  overflow-wrap: anywhere;
-  word-break: break-word;
-  cursor: pointer;
-  transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
-.grik-prompt-card:hover:not(:disabled),
-.grik-prompt-card:focus-visible {
-  transform: translateY(-1px);
-  border-color: rgba(31, 111, 61, 0.3);
-  box-shadow: 0 14px 30px rgba(20, 40, 28, 0.08);
+.grik-suggestion-chip {
+  padding: 8px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(11, 11, 11, 0.12);
+  background: rgba(255, 255, 255, 0.9);
+  font: inherit;
+  font-size: 12px;
+  color: inherit;
+  cursor: pointer;
+  max-width: 260px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  transition: border-color 0.2s ease, background 0.2s ease;
+}
+
+.grik-suggestion-chip:hover:not(:disabled),
+.grik-suggestion-chip:focus-visible {
+  border-color: rgba(31, 111, 61, 0.32);
+  background: rgba(31, 111, 61, 0.08);
 }
 
 .grik-stream-header {
@@ -3447,136 +3421,75 @@ a {
     linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(245, 248, 245, 0.96));
 }
 
-.grik-composer-head {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 12px;
-}
-
-.grik-composer-head h3 {
-  margin: 0 0 4px;
-}
-
-.grik-input-mode-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-  gap: 10px;
-}
-
-.grik-mode-card {
+.grik-composer-status-row {
   display: grid;
   gap: 8px;
-  align-content: start;
-  min-height: 126px;
-  padding: 14px;
-  border-radius: 18px;
-  border: 1px solid rgba(11, 11, 11, 0.1);
-  background: rgba(255, 255, 255, 0.94);
-  color: inherit;
-  font: inherit;
-  text-align: left;
-  cursor: pointer;
-  transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+}
+
+.grik-clear-media-btn {
+  align-self: center;
+}
+
+.grik-composer-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.grik-tool-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.grik-tool-btn {
   position: relative;
+  width: 34px;
+  height: 34px;
+  display: inline-grid;
+  place-items: center;
+  border-radius: 10px;
+  border: 1px solid rgba(11, 11, 11, 0.1);
+  background: rgba(255, 255, 255, 0.9);
+  color: rgba(11, 11, 11, 0.68);
+  cursor: pointer;
+  transition: border-color 0.2s ease, background 0.2s ease, color 0.2s ease;
   overflow: hidden;
 }
 
-.grik-mode-card:hover:not(:disabled),
-.grik-mode-card:focus-visible {
-  transform: translateY(-1px);
-  border-color: rgba(31, 111, 61, 0.28);
-  box-shadow: 0 16px 30px rgba(15, 34, 22, 0.08);
+.grik-tool-btn:hover:not(:disabled) {
+  border-color: rgba(31, 111, 61, 0.32);
+  color: var(--color-primary);
 }
 
-.grik-mode-card strong {
-  font-size: 15px;
-  line-height: 1.2;
-}
-
-.grik-mode-card span:last-child {
-  color: rgba(11, 11, 11, 0.62);
-  font-size: 12px;
-  line-height: 1.4;
-}
-
-.grik-mode-card input {
+.grik-tool-btn input {
   position: absolute;
   inset: 0;
   opacity: 0;
   cursor: pointer;
 }
 
-.grik-mode-card.is-active {
-  border-color: rgba(31, 111, 61, 0.34);
+.grik-tool-btn.is-active {
+  border-color: rgba(31, 111, 61, 0.4);
   background: rgba(31, 111, 61, 0.12);
-}
-
-.grik-mode-card.is-recording {
-  border-color: rgba(186, 43, 43, 0.34);
-  background: rgba(186, 43, 43, 0.08);
-}
-
-.grik-mode-icon {
-  width: 36px;
-  height: 36px;
-  border-radius: 12px;
-  display: inline-grid;
-  place-items: center;
-  background: rgba(31, 111, 61, 0.1);
   color: var(--color-primary);
 }
 
-.grik-composer-summary-row {
+.grik-tool-btn.is-recording {
+  border-color: rgba(186, 43, 43, 0.4);
+  background: rgba(186, 43, 43, 0.1);
+  color: #a63535;
+}
+
+.grik-options-panel {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
   gap: 10px;
-}
-
-.grik-summary-card {
-  display: grid;
-  gap: 6px;
-  padding: 12px 14px;
-  border-radius: 16px;
-  border: 1px solid rgba(11, 11, 11, 0.08);
-  background: rgba(242, 245, 242, 0.92);
-}
-
-.grik-summary-card strong {
-  font-size: 15px;
-  line-height: 1.3;
-}
-
-.grik-note-strip {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.grik-note-strip span {
-  padding: 7px 10px;
-  border-radius: 999px;
-  background: rgba(31, 111, 61, 0.08);
-  color: rgba(11, 11, 11, 0.7);
-  font-size: 12px;
-}
-
-.grik-composer-status-row {
-  display: grid;
-  gap: 8px;
-}
-
-.grik-composer-actions {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: space-between;
-  align-items: center;
-  gap: 10px;
-}
-
-.grik-composer-actions .muted {
-  margin: 0;
-  max-width: 480px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(11, 11, 11, 0.08);
 }
 
 .grik-side-summary {
@@ -3620,18 +3533,13 @@ a {
 
   .grik-page-header,
   .grik-stream-header,
-  .grik-composer-head,
-  .grik-composer-actions {
+  .grik-composer-toolbar {
     flex-direction: column;
     align-items: stretch;
   }
 
   .grik-stream-badges {
     justify-content: flex-start;
-  }
-
-  .grik-mode-card {
-    min-height: 112px;
   }
 }
 
@@ -3647,10 +3555,7 @@ a {
   }
 
   .grik-hero-metrics,
-  .grik-session-metrics,
-  .grik-prompt-grid,
-  .grik-input-mode-grid,
-  .grik-composer-summary-row {
+  .grik-options-panel {
     grid-template-columns: 1fr;
   }
 }
