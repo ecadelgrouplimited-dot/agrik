@@ -2,18 +2,21 @@
 
 Digital extension intelligence, advisory, market access, and farm operations for farmers.
 
-AGRIK is a React + Vite progressive web app that gives farmers, buyers/offtakers,
-service providers, and admins a shared view into advisory chat, market listings,
-weather, subscriptions, and farm records. It talks to a separate backend API over
-HTTP (see `VITE_API_BASE_URL`).
+AGRIK gives farmers, buyers/offtakers, service providers, and admins a shared
+view into advisory chat, market listings, weather, subscriptions, and farm
+records, backed by a Node.js/PostgreSQL API.
 
 ## Project layout
 
 ```
-web/    React + TypeScript + Vite frontend (the only app in this repo today)
+web/     React + TypeScript + Vite frontend (PWA)
+api/     Node.js + TypeScript + Express + Prisma/PostgreSQL backend
+deploy/  systemd unit, nginx config, and deployment runbook for the VPS
 ```
 
 ## Getting started
+
+Frontend:
 
 ```bash
 cd web
@@ -22,26 +25,37 @@ cp .env.example .env   # point VITE_API_BASE_URL at your backend
 npm run dev
 ```
 
-## Scripts (run from `web/`)
+Backend (needs a local PostgreSQL instance):
 
-| Command         | Purpose                                   |
-| --------------- | ------------------------------------------ |
-| `npm run dev`   | Start the Vite dev server                  |
-| `npm run build` | Type-check (`tsc -b`) and build production assets to `web/dist` |
-| `npm run preview` | Serve the production build locally       |
-| `npm run lint`  | Run ESLint over `web/src`                  |
+```bash
+cd api
+npm install
+cp .env.example .env   # fill in DATABASE_URL, JWT secrets, SMTP, AI keys
+npx prisma migrate dev
+npx tsx prisma/seed.ts # seeds Uganda districts (+ an admin if SEED_ADMIN_* set)
+npm run dev
+```
+
+## Scripts
+
+`web/`: `npm run dev` · `npm run build` (type-check + Vite build to `web/dist`) · `npm run preview` · `npm run lint`
+
+`api/`: `npm run dev` (tsx watch) · `npm run build` (tsc to `api/dist`) · `npm start` · `npm run prisma:migrate` · `npm run seed`
 
 ## Environment variables
 
-Set these in `web/.env` (see `web/.env.example`):
+See `web/.env.example` and `api/.env.example` for the full list. Notable ones:
 
-- `VITE_API_BASE_URL` — base URL of the backend API (default `http://localhost:8000`)
-- `VITE_API_TIMEOUT_MS` — request timeout in ms (default `10000`)
-- `VITE_CHAT_TIMEOUT_MS` — timeout for chat/vision endpoints in ms (default `90000`)
+- `VITE_API_BASE_URL` — frontend's backend URL (baked in at Vite build time)
+- `DATABASE_URL` — Postgres connection string for the API
+- `JWT_SECRET` / `ADMIN_JWT_SECRET` — separate signing secrets for user vs admin sessions
+- `SMTP_*` / `MAIL_FROM` — Hostinger SMTP for verification, password-reset, and admin OTP emails
+- `DEEPSEEK_API_KEY` — chat (`deepseek-v4-pro`) and vision (`deepseek-v4-flash-vision-exp`, a separate model)
+- `OPENAI_API_KEY` — audio transcription (Whisper) and text-to-speech
 
 ## Deployment
 
-`npm run build` produces a static `web/dist` directory that can be served by any
-static file host (e.g. Nginx) on the VPS, with `VITE_API_BASE_URL` set at build
-time to the deployed backend's URL. A service worker (`web/public/sw.js`) is
-registered in production builds for offline/PWA support.
+See [`deploy/DEPLOY.md`](deploy/DEPLOY.md) for the full VPS runbook (database,
+systemd unit, nginx config, certbot). In short: the frontend builds to a
+static `web/dist` served directly by nginx; the API runs as a systemd service
+bound to `127.0.0.1:8000`, reverse-proxied by nginx at `api.agrik.co`.

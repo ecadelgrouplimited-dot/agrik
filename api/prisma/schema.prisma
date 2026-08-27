@@ -1,0 +1,357 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------------------------------------------------------------------------
+// Auth / users
+// ---------------------------------------------------------------------------
+
+enum UserRole {
+  farmer
+  buyer
+  offtaker
+  service_provider
+  input_supplier
+}
+
+model User {
+  id                 String    @id @default(uuid())
+  phone              String    @unique
+  email              String    @unique
+  passwordHash       String
+  role               UserRole
+  status             String    @default("active")
+  verificationStatus String    @default("pending") @map("verification_status")
+  createdAt          DateTime  @default(now()) @map("created_at")
+  updatedAt          DateTime  @updatedAt @map("updated_at")
+  lastLoginAt        DateTime? @map("last_login_at")
+
+  identity     Identity?
+  settings     UserSettings?
+  farm         FarmProfile?
+  subscriptions Subscription[]
+  platformServices PlatformService[]
+  chatMessages ChatMessage[]
+  emailVerifications EmailVerification[]
+  passwordResets     PasswordReset[]
+
+  @@map("users")
+}
+
+model Identity {
+  userId            String   @id @map("user_id")
+  fullName          String   @map("full_name")
+  district          String
+  parish            String
+  crops             String[] @default([])
+  organizationName  String?  @map("organization_name")
+  serviceCategories String[] @default([]) @map("service_categories")
+  focusCrops        String[] @default([]) @map("focus_crops")
+  onboardingStage   String   @default("complete") @map("onboarding_stage")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("identities")
+}
+
+model UserSettings {
+  userId             String   @id @map("user_id")
+  preferredLanguage  String?  @map("preferred_language")
+  district           String?
+  parish             String?
+  smsOptIn           Boolean  @default(false) @map("sms_opt_in")
+  voiceOptIn         Boolean  @default(false) @map("voice_opt_in")
+  weatherAlerts      Boolean  @default(true) @map("weather_alerts")
+  priceAlerts        Boolean  @default(true) @map("price_alerts")
+  updatedAt          DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_settings")
+}
+
+model FarmProfile {
+  farmerId        String   @id @map("farmer_id")
+  crops           String[] @default([])
+  plantingDates   Json     @default("[]") @map("planting_dates")
+  soilProfile     Json     @default("{}") @map("soil_profile")
+  climateExposure Json     @default("{}") @map("climate_exposure")
+  yieldEstimates  Json     @default("[]") @map("yield_estimates")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [farmerId], references: [id], onDelete: Cascade)
+
+  @@map("farm_profiles")
+}
+
+model EmailVerification {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  codeHash  String   @map("code_hash")
+  expiresAt DateTime @map("expires_at")
+  consumedAt DateTime? @map("consumed_at")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("email_verifications")
+}
+
+model PasswordReset {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  codeHash  String   @map("code_hash")
+  expiresAt DateTime @map("expires_at")
+  consumedAt DateTime? @map("consumed_at")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("password_resets")
+}
+
+// ---------------------------------------------------------------------------
+// Admin
+// ---------------------------------------------------------------------------
+
+model Admin {
+  id                 String    @id @default(uuid())
+  email              String    @unique
+  passwordHash       String    @map("password_hash")
+  status             String    @default("active")
+  verificationStatus String    @default("verified") @map("verification_status")
+  createdAt          DateTime  @default(now()) @map("created_at")
+
+  otps       AdminOtp[]
+  activities AdminActivity[]
+
+  @@map("admins")
+}
+
+model AdminOtp {
+  id        String   @id @default(uuid())
+  adminId   String   @map("admin_id")
+  codeHash  String   @map("code_hash")
+  expiresAt DateTime @map("expires_at")
+  consumedAt DateTime? @map("consumed_at")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  admin Admin @relation(fields: [adminId], references: [id], onDelete: Cascade)
+
+  @@index([adminId])
+  @@map("admin_otps")
+}
+
+model AdminActivity {
+  id        Int      @id @default(autoincrement())
+  adminId   String   @map("admin_id")
+  action    String
+  details   Json     @default("{}")
+  ipAddress String?  @map("ip_address")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  admin Admin @relation(fields: [adminId], references: [id], onDelete: Cascade)
+
+  @@index([adminId])
+  @@map("admin_activity")
+}
+
+// ---------------------------------------------------------------------------
+// Reference geography (Uganda)
+// ---------------------------------------------------------------------------
+
+model District {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  latitude  Float?
+  longitude Float?
+
+  parishes Parish[]
+
+  @@map("districts")
+}
+
+model Parish {
+  id         String  @id @default(uuid())
+  name       String
+  subcounty  String?
+  districtId String  @map("district_id")
+
+  district District @relation(fields: [districtId], references: [id], onDelete: Cascade)
+
+  @@unique([districtId, name])
+  @@index([districtId])
+  @@map("parishes")
+}
+
+// ---------------------------------------------------------------------------
+// Market
+// ---------------------------------------------------------------------------
+
+enum ListingRole {
+  seller
+  buyer
+}
+
+model MarketListing {
+  id                Int       @id @default(autoincrement())
+  userId             String?  @map("user_id")
+  role               ListingRole @default(seller)
+  crop               String
+  quantity           Float?
+  unit               String?
+  price              Float?
+  currency           String    @default("UGX")
+  grade              String?
+  description        String?
+  contactName        String?   @map("contact_name")
+  contactPhone       String?   @map("contact_phone")
+  contactWhatsapp    String?   @map("contact_whatsapp")
+  mediaUrls          String[]  @default([]) @map("media_urls")
+  availabilityStart  DateTime? @map("availability_start")
+  availabilityEnd    DateTime? @map("availability_end")
+  status             String    @default("open")
+  district           String?
+  parish             String?
+  latitude           Float?
+  longitude          Float?
+  geometryWkt        String?   @map("geometry_wkt")
+  createdAt          DateTime  @default(now()) @map("created_at")
+  updatedAt          DateTime  @updatedAt @map("updated_at")
+
+  offers MarketOffer[]
+
+  @@index([status])
+  @@index([district])
+  @@map("market_listings")
+}
+
+model MarketOffer {
+  id         Int      @id @default(autoincrement())
+  listingId  Int      @map("listing_id")
+  phone      String
+  price      Float?
+  quantity   Float?
+  status     String   @default("open")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  listing MarketListing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+
+  @@index([listingId])
+  @@index([phone])
+  @@map("market_offers")
+}
+
+model MarketService {
+  id                Int      @id @default(autoincrement())
+  userId            String?  @map("user_id")
+  serviceType       String   @map("service_type")
+  description       String?
+  mediaUrls         String[] @default([]) @map("media_urls")
+  coverageRadiusKm  Float?   @map("coverage_radius_km")
+  price             Float?
+  currency          String   @default("UGX")
+  status            String   @default("active")
+  district          String?
+  parish            String?
+  latitude          Float?
+  longitude         Float?
+  geometryWkt       String?  @map("geometry_wkt")
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  @@index([status])
+  @@map("market_services")
+}
+
+model MarketPrice {
+  id         Int      @id @default(autoincrement())
+  crop       String
+  market     String?
+  district   String?
+  price      Float
+  currency   String   @default("UGX")
+  source     String?
+  capturedAt DateTime @default(now()) @map("captured_at")
+
+  @@index([crop])
+  @@index([district])
+  @@map("market_prices")
+}
+
+model MarketAlert {
+  id               Int      @id @default(autoincrement())
+  phone            String
+  alertType        String   @map("alert_type")
+  crop             String?
+  threshold        Float?
+  channel          String?  @default("sms")
+  active           Boolean  @default(true)
+  minIntervalHours Int?     @map("min_interval_hours")
+  district         String?
+  parish           String?
+  lastTriggeredAt  DateTime? @map("last_triggered_at")
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  @@index([phone])
+  @@map("market_alerts")
+}
+
+// ---------------------------------------------------------------------------
+// Profile extras
+// ---------------------------------------------------------------------------
+
+model Subscription {
+  id          Int       @id @default(autoincrement())
+  userId      String    @map("user_id")
+  plan        String
+  status      String    @default("active")
+  startsAt    DateTime  @default(now()) @map("starts_at")
+  endsAt      DateTime? @map("ends_at")
+  provider    String?
+  externalRef String?   @map("external_ref")
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("subscriptions")
+}
+
+model PlatformService {
+  id          Int      @id @default(autoincrement())
+  userId      String   @map("user_id")
+  serviceType String   @map("service_type")
+  description String?
+  price       Float?
+  currency    String   @default("UGX")
+  status      String   @default("active")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("platform_services")
+}
+
+model ChatMessage {
+  id        Int      @id @default(autoincrement())
+  userId    String   @map("user_id")
+  role      String
+  message   String
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("chat_messages")
+}

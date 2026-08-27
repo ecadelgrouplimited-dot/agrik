@@ -1,0 +1,31 @@
+# /etc/systemd/system/agrik-api.service — AGRIK backend API
+[Unit]
+Description=AGRIK API
+After=network.target postgresql.service
+
+[Service]
+Type=simple
+User=agrik
+Group=agrik
+WorkingDirectory=/var/www/agrik/api
+EnvironmentFile=/var/www/agrik/api/.env
+ExecStart=/usr/bin/node /var/www/agrik/api/dist/server.js
+Restart=always
+RestartSec=5
+StandardOutput=append:/var/www/agrik/logs/api.log
+StandardError=append:/var/www/agrik/logs/api-error.log
+
+# Hardening
+NoNewPrivileges=true
+ProtectSystem=full
+ReadWritePaths=/var/www/agrik/api/uploads
+
+# Modest footprint — this VPS runs ~20 other tenants at chronic high load
+# (see ECADEL_SERVERS_HEALTH_MANAGEMENT audit, 2026-08-23). Keep AGRIK's
+# resource ceiling conservative until real traffic justifies raising it.
+CPUQuota=50%
+MemoryMax=350M
+MemoryHigh=300M
+
+[Install]
+WantedBy=multi-user.target
