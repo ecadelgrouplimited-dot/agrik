@@ -13,6 +13,7 @@ const navItems = [
   { label: "Subscriptions", path: "/dashboard/subscriptions", subtitle: "Plans & billing", icon: "subscriptions" as const },
   { label: "Farmer Brain", path: "/dashboard/brain", subtitle: "Ask GRIK AI", icon: "brain" as const },
   { label: "History", path: "/dashboard/history", subtitle: "Timeline & activity", icon: "history" as const },
+  { label: "Settings", path: "/dashboard/settings", subtitle: "Location & alerts", icon: "settings" as const },
 ];
 
 export default function FarmerLayout() {

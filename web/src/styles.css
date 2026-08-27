@@ -1429,6 +1429,35 @@ a {
   color: var(--color-primary);
 }
 
+.mini-card-link {
+  text-decoration: none;
+  color: inherit;
+  transition: border-color 0.2s ease, transform 0.2s ease;
+}
+
+.mini-card-link:hover {
+  border-color: rgba(31, 111, 61, 0.32);
+  transform: translateY(-1px);
+}
+
+.summary-item-link {
+  text-decoration: none;
+  color: inherit;
+  cursor: pointer;
+  transition: border-color 0.2s ease, background 0.2s ease;
+}
+
+.summary-item-link span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.summary-item-link:hover {
+  border-color: rgba(31, 111, 61, 0.3);
+  background: rgba(31, 111, 61, 0.09);
+}
+
 .farmer-dashboard-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
@@ -1498,6 +1527,68 @@ a {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   gap: 12px;
+}
+
+.settings-toggle-list {
+  display: grid;
+  gap: 10px;
+}
+
+.settings-toggle-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 1px solid rgba(11, 11, 11, 0.08);
+  background: rgba(31, 111, 61, 0.04);
+  cursor: pointer;
+}
+
+.settings-toggle-row div {
+  display: grid;
+  gap: 2px;
+}
+
+.settings-toggle-row strong {
+  font-size: 14px;
+}
+
+.settings-toggle-row .muted {
+  font-size: 12px;
+}
+
+.settings-toggle-row input[type="checkbox"] {
+  appearance: none;
+  width: 40px;
+  height: 22px;
+  border-radius: 999px;
+  background: rgba(11, 11, 11, 0.16);
+  position: relative;
+  flex-shrink: 0;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.settings-toggle-row input[type="checkbox"]::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--color-white);
+  transition: transform 0.2s ease;
+}
+
+.settings-toggle-row input[type="checkbox"]:checked {
+  background: var(--color-primary);
+}
+
+.settings-toggle-row input[type="checkbox"]:checked::after {
+  transform: translateX(18px);
 }
 
 .farmer-service-preview-card,

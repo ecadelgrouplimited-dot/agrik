@@ -34,6 +34,7 @@ const FarmerServices = lazy(() => import("./pages/FarmerServices"));
 const FarmerSubscriptions = lazy(() => import("./pages/FarmerSubscriptions"));
 const FarmerBrain = lazy(() => import("./pages/FarmerBrain"));
 const FarmerHistory = lazy(() => import("./pages/FarmerHistory"));
+const FarmerSettings = lazy(() => import("./pages/FarmerSettings"));
 const BuyerLayout = lazy(() => import("./pages/BuyerLayout"));
 const BuyerDashboard = lazy(() => import("./pages/BuyerDashboard"));
 const BuyerMarketplace = lazy(() => import("./pages/BuyerMarketplace"));
@@ -114,6 +115,7 @@ export default function App() {
           <Route path="subscriptions" element={<FarmerSubscriptions />} />
           <Route path="brain" element={<FarmerBrain />} />
           <Route path="history" element={<FarmerHistory />} />
+          <Route path="settings" element={<FarmerSettings />} />
         </Route>
         <Route path="/buyer" element={isAuthed && isBuyerRole ? <BuyerLayout /> : <Navigate to={defaultPath} />}>
           <Route index element={<BuyerDashboard />} />

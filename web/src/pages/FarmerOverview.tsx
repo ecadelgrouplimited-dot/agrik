@@ -130,10 +130,10 @@ export default function FarmerOverview() {
     if (!hasLocation) {
       items.push({
         id: "location",
-        title: "Add district and parish",
-        detail: "Your weather and market context gets stronger once your location is set correctly.",
-        to: "/dashboard/farm",
-        action: "Update location",
+        title: "Set your district and parish",
+        detail: "Weather forecasts and market matching need a location to work.",
+        to: "/dashboard/settings",
+        action: "Open settings",
       });
     }
     if (recentMessages === 0) {
@@ -179,30 +179,30 @@ export default function FarmerOverview() {
       <section className="farmer-card farmer-command-hero">
         <div className="farmer-command-hero-copy">
           <div className="label">Workspace status</div>
-          <h3>{profile?.user.phone ?? "Farmer"} is {readinessScore >= 3 ? "in a strong operating state" : "still setting up the dashboard"}</h3>
-          <p className="muted">
-            {weather?.location_name || locationLabel !== "Not set"
-              ? `Location context is ${weather?.location_name ?? locationLabel}.`
-              : "Location context is still missing."}{" "}
-            {subscription?.plan ? `Current plan: ${subscription.plan}.` : "No active plan yet."}
-          </p>
+          <h3>{readinessScore >= 3 ? "Your dashboard is in good shape" : "Let's finish setting up"}</h3>
           <div className="farmer-chip-row">
-            <span className="chip">Verification: {profile?.user.verification_status ?? "unknown"}</span>
-            <span className="chip">Language: {profile?.settings.preferred_language ?? "auto"}</span>
-            <span className="chip">Crops: {profile?.farm.crops.length ?? 0}</span>
+            <span className="chip">
+              <Icon name="shield" size={12} /> {profile?.user.verification_status ?? "unknown"}
+            </span>
+            <span className="chip">
+              <Icon name="ai" size={12} /> {profile?.settings.preferred_language ?? "auto"}
+            </span>
+            <span className="chip">
+              <Icon name="farm" size={12} /> {profile?.farm.crops.length ?? 0} crops
+            </span>
           </div>
         </div>
         <div className="farmer-command-hero-side">
-          <article className="farmer-command-mini-card">
+          <NavLink to="/dashboard/settings" className="farmer-command-mini-card mini-card-link">
             <span className="label">Weather</span>
-            <strong>{weather?.next_rain_date ? new Date(weather.next_rain_date).toLocaleDateString() : "Set profile location"}</strong>
-            <span className="muted">Next significant rain window</span>
-          </article>
-          <article className="farmer-command-mini-card">
+            <strong>{weather?.next_rain_date ? new Date(weather.next_rain_date).toLocaleDateString() : hasLocation ? "No rain signal" : "Set your location"}</strong>
+            <span className="muted">{hasLocation ? "Next rain window" : "Tap to add district & parish"}</span>
+          </NavLink>
+          <NavLink to="/dashboard/services" className="farmer-command-mini-card mini-card-link">
             <span className="label">Services</span>
             <strong>{services.length}</strong>
-            <span className="muted">Support tools available now</span>
-          </article>
+            <span className="muted">Support tools available</span>
+          </NavLink>
         </div>
       </section>
 
@@ -250,22 +250,30 @@ export default function FarmerOverview() {
             </div>
           </div>
           <div className="farmer-side-summary">
-            <div className="farmer-side-summary-item">
-              <span>Location</span>
+            <NavLink to="/dashboard/settings" className="farmer-side-summary-item summary-item-link">
+              <span>
+                <Icon name="location" size={13} /> Location
+              </span>
               <strong>{locationLabel}</strong>
-            </div>
-            <div className="farmer-side-summary-item">
-              <span>Weather signal</span>
+            </NavLink>
+            <NavLink to="/dashboard/settings" className="farmer-side-summary-item summary-item-link">
+              <span>
+                <Icon name="weather" size={13} /> Weather signal
+              </span>
               <strong>{weather?.next_rain_date ? new Date(weather.next_rain_date).toLocaleDateString() : "No rain signal"}</strong>
-            </div>
-            <div className="farmer-side-summary-item">
-              <span>Current plan</span>
+            </NavLink>
+            <NavLink to="/dashboard/subscriptions" className="farmer-side-summary-item summary-item-link">
+              <span>
+                <Icon name="subscriptions" size={13} /> Current plan
+              </span>
               <strong>{subscription?.plan ?? "Not active"}</strong>
-            </div>
-            <div className="farmer-side-summary-item">
-              <span>Support catalog</span>
+            </NavLink>
+            <NavLink to="/dashboard/services" className="farmer-side-summary-item summary-item-link">
+              <span>
+                <Icon name="services" size={13} /> Support catalog
+              </span>
               <strong>{services.length} services</strong>
-            </div>
+            </NavLink>
           </div>
         </section>
       </div>

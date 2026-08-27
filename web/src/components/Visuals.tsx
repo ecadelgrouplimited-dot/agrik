@@ -32,7 +32,9 @@ type IconName =
   | "play"
   | "pause"
   | "stop"
-  | "wave";
+  | "wave"
+  | "settings"
+  | "location";
 
 type IconProps = {
   name: IconName;
@@ -308,6 +310,20 @@ function iconPaths(name: IconName) {
         <>
           <path d="M3.8 12h2.4l1.3-3.1 2.2 8 2.1-6 2 3.2 1.7-4.1 1.9 2.9h2.8" {...strokeProps} />
           <path d="M3.8 18.8h16.4" {...strokeProps} />
+        </>
+      );
+    case "settings":
+      return (
+        <>
+          <circle cx="12" cy="12" r="3" {...strokeProps} />
+          <path d="M12 3.6v2.1M12 18.3v2.1M20.4 12h-2.1M5.7 12H3.6M17.7 6.3l-1.5 1.5M7.8 16.2l-1.5 1.5M17.7 17.7l-1.5-1.5M7.8 7.8 6.3 6.3" {...strokeProps} />
+        </>
+      );
+    case "location":
+      return (
+        <>
+          <path d="M12 21.2s6.8-6 6.8-11.2A6.8 6.8 0 0 0 5.2 10c0 5.2 6.8 11.2 6.8 11.2Z" {...strokeProps} />
+          <circle cx="12" cy="9.8" r="2.3" {...strokeProps} />
         </>
       );
     default:
