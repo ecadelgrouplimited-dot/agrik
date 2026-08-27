@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useOutletContext } from "react-router-dom";
 import { Icon } from "../components/Visuals";
 import FarmLocationFields from "../components/FarmLocationFields";
@@ -13,6 +14,17 @@ import {
   type FarmerFarmWorkspaceContext,
 } from "./FarmerFarm";
 import FarmerCropSelector from "./FarmerCropSelector";
+
+type SectionKey = "identity" | "expectations" | "finance" | "insurance" | "risk-operations" | "intelligence";
+
+const SECTIONS: { key: SectionKey; label: string; subtitle: string }[] = [
+  { key: "identity", label: "Identity", subtitle: "Name, location, crops" },
+  { key: "expectations", label: "Season plan", subtitle: "Yield and market targets" },
+  { key: "finance", label: "Finance", subtitle: "Budget and credit" },
+  { key: "insurance", label: "Insurance", subtitle: "Cover and claims" },
+  { key: "risk-operations", label: "Risk and ops", subtitle: "Preparedness and staffing" },
+  { key: "intelligence", label: "Intelligence", subtitle: "Priority actions" },
+];
 
 export default function FarmerFarmManage() {
   const {
@@ -38,6 +50,8 @@ export default function FarmerFarmManage() {
     onOperationsChange,
   } = useOutletContext<FarmerFarmWorkspaceContext>();
 
+  const [activeSection, setActiveSection] = useState<SectionKey>("identity");
+
   if (!activeFarm) {
     return <section className="farmer-card">No farm is selected for management.</section>;
   }
@@ -58,16 +72,22 @@ export default function FarmerFarmManage() {
           {activeFarm.isPrimary ? <span className="pill">Primary planning farm</span> : null}
         </div>
 
-        <div className="farmer-filter-chip-row farm-section-nav">
-          <a className="btn ghost tiny" href="#farm-identity">Identity</a>
-          <a className="btn ghost tiny" href="#farm-expectations">Expectations</a>
-          <a className="btn ghost tiny" href="#farm-finance">Finance</a>
-          <a className="btn ghost tiny" href="#farm-insurance">Insurance</a>
-          <a className="btn ghost tiny" href="#farm-risk-operations">Risk and ops</a>
-          <a className="btn ghost tiny" href="#farm-intelligence">Intelligence</a>
-        </div>
+        <nav className="dashboard-subnav farm-section-nav" aria-label="Farm details sections">
+          {SECTIONS.map((section) => (
+            <button
+              key={section.key}
+              type="button"
+              className={`dashboard-subnav-link ${activeSection === section.key ? "active" : ""}`}
+              onClick={() => setActiveSection(section.key)}
+              title={section.subtitle}
+            >
+              <strong>{section.label}</strong>
+            </button>
+          ))}
+        </nav>
       </section>
 
+      {activeSection === "identity" ? (
       <section className="farmer-card" id="farm-identity">
         <div className="farmer-card-header">
           <div className="section-title-with-icon">
@@ -167,7 +187,9 @@ export default function FarmerFarmManage() {
           <span>Water access available on this farm</span>
         </label>
       </section>
+      ) : null}
 
+      {activeSection === "expectations" ? (
       <section className="farmer-card" id="farm-expectations">
         <div className="farmer-card-header">
           <div className="section-title-with-icon">
@@ -288,7 +310,9 @@ export default function FarmerFarmManage() {
           </article>
         </div>
       </section>
+      ) : null}
 
+      {activeSection === "finance" ? (
       <section className="farmer-card" id="farm-finance">
         <div className="farmer-card-header">
           <div className="section-title-with-icon">
@@ -370,7 +394,9 @@ export default function FarmerFarmManage() {
           </label>
         </div>
       </section>
+      ) : null}
 
+      {activeSection === "insurance" ? (
       <section className="farmer-card" id="farm-insurance">
         <div className="farmer-card-header">
           <div className="section-title-with-icon">
@@ -454,7 +480,9 @@ export default function FarmerFarmManage() {
           </label>
         </div>
       </section>
+      ) : null}
 
+      {activeSection === "risk-operations" ? (
       <section className="farmer-card" id="farm-risk-operations">
         <div className="farmer-card-header">
           <div className="section-title-with-icon">
@@ -629,7 +657,9 @@ export default function FarmerFarmManage() {
           </label>
         </div>
       </section>
+      ) : null}
 
+      {activeSection === "intelligence" ? (
       <section className="farmer-card" id="farm-intelligence">
         <div className="farmer-card-header">
           <div className="section-title-with-icon">
@@ -662,6 +692,7 @@ export default function FarmerFarmManage() {
           {activeFarmRiskScore != null ? `${activeFarmRiskScore.toFixed(1)} / 5` : "--"}
         </div>
       </section>
+      ) : null}
     </>
   );
 }

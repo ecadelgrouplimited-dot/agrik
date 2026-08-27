@@ -1250,6 +1250,9 @@ a {
   border: 1px solid rgba(11, 11, 11, 0.08);
   background: rgba(31, 111, 61, 0.04);
   transition: border-color 0.2s ease, background 0.2s ease, transform 0.2s ease;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
 }
 
 .dashboard-subnav-link:hover {
@@ -1760,9 +1763,10 @@ a {
 
 .farmer-form-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 10px;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 14px 18px;
   align-items: start;
+  max-width: 980px;
 }
 
 .farmer-form-span {
@@ -1977,8 +1981,13 @@ a {
   padding-bottom: 4px;
 }
 
-.farm-section-nav .btn {
-  text-decoration: none;
+.farm-section-nav.dashboard-subnav {
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+}
+
+.farm-section-nav .dashboard-subnav-link {
+  cursor: pointer;
+  text-align: left;
 }
 
 .market-role-grid {
