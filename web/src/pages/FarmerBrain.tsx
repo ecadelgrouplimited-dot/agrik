@@ -67,23 +67,8 @@ type VisionModelOption = {
 type RealtimePhase = "idle" | "connecting" | "greeting" | "listening" | "waiting" | "speaking" | "paused";
 
 const DEFAULT_VISION_MODEL_OPTIONS: VisionModelOption[] = [
-  { id: "auto", label: "Auto (crop-aware)", tip: "Uses crop hint and confidence to pick the best model." },
-  { id: "all", label: "Compare All", tip: "Runs multiple models and selects the strongest signal (slower)." },
-  {
-    id: "wambugu71/crop_leaf_diseases_vit",
-    label: "wambugu71/crop_leaf_diseases_vit",
-    tip: "Structured leaf disease classes and quick triage.",
-  },
-  {
-    id: "prof-freakenstein/plantnet-disease-detection",
-    label: "prof-freakenstein/plantnet-disease-detection",
-    tip: "Broad plant disease coverage.",
-  },
-  {
-    id: "IsmatS/crop_desease_detection",
-    label: "IsmatS/crop_desease_detection",
-    tip: "Useful as a second opinion model.",
-  },
+  { id: "auto", label: "Auto", tip: "Let GRIK pick the best model for this photo." },
+  { id: "grik-vision", label: "GRIK Vision", tip: "Best for detailed crop/pest photo analysis." },
 ];
 
 const starterPrompts = [

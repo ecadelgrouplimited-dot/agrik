@@ -230,7 +230,7 @@ router.get(
   asyncHandler(async (_req, res) => {
     res.json({
       models: [
-        { id: env.deepseek.visionModel, label: "DeepSeek Vision", tip: "Best for detailed crop/pest photo analysis." },
+        { id: env.deepseek.visionModel, label: "GRIK Vision", tip: "Best for detailed crop/pest photo analysis." },
       ],
       crops: CROPS,
     });
