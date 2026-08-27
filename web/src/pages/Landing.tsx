@@ -910,7 +910,7 @@ export default function Landing() {
             Clear advisory, risk alerts, and finance-ready records across SMS, voice, and mobile.
           </p>
           <div className="landing-neo-cta">
-            <Link className="btn" to="/auth">
+            <Link className="btn" to="/auth/register">
               Start with advisory
             </Link>
             <Link className="btn ghost" to="/auth">
@@ -1248,7 +1248,7 @@ export default function Landing() {
           </div>
         </div>
         <div className="landing-neo-final-actions">
-          <Link className="btn" to="/auth">
+          <Link className="btn" to="/auth/register">
             Create my account
           </Link>
           <Link className="btn ghost" to="/auth">

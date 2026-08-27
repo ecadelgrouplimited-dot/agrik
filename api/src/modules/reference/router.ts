@@ -5,6 +5,8 @@ import { CROPS, ONBOARDING_ROLES, SERVICE_CATEGORY_OPTIONS } from "./config.js";
 
 const router = Router();
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 router.get(
   "/uganda/districts",
   asyncHandler(async (_req, res) => {
@@ -20,9 +22,11 @@ router.get(
 router.get(
   "/uganda/parishes",
   asyncHandler(async (req, res) => {
-    const districtName = String(req.query.district ?? "").trim();
-    const district = districtName
-      ? await prisma.district.findFirst({ where: { name: { equals: districtName, mode: "insensitive" } } })
+    const districtParam = String(req.query.district ?? "").trim();
+    const district = districtParam
+      ? UUID_RE.test(districtParam)
+        ? await prisma.district.findUnique({ where: { id: districtParam } })
+        : await prisma.district.findFirst({ where: { name: { equals: districtParam, mode: "insensitive" } } })
       : null;
 
     const parishes = await prisma.parish.findMany({
@@ -40,7 +44,7 @@ router.get(
       district_id: p.districtId,
     }));
 
-    res.json({ country: "Uganda", district: districtName || null, total: items.length, items });
+    res.json({ country: "Uganda", district: district?.name ?? (districtParam || null), total: items.length, items });
   })
 );
 

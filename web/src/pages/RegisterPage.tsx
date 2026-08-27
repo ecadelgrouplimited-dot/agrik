@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import { useAuth } from "../state/auth";
 import {
   api,
@@ -6,8 +7,8 @@ import {
   type OnboardingRoleOptionOut,
   type ServiceCategoryOptionOut,
   type UgandaDistrictOut,
-  type UgandaParishOut,
 } from "../lib/api";
+import EmailVerifyPanel from "../components/EmailVerifyPanel";
 
 type StatusMessage = { type: "info" | "error"; message: string };
 
@@ -24,8 +25,6 @@ type EmailCheckState =
   | { state: "available"; normalized: string }
   | { state: "taken"; normalized: string }
   | { state: "invalid"; message: string };
-
-type AuthMode = "login" | "register";
 
 const FALLBACK_ROLE_OPTIONS: OnboardingRoleOptionOut[] = [
   {
@@ -76,12 +75,16 @@ function normalizeSelection(value: string) {
   return value.trim().toLowerCase();
 }
 
-export default function AuthPage() {
-  const { login, register, verify, resendVerificationCode, requestPasswordReset, resetPassword } = useAuth();
-  const [mode, setMode] = useState<AuthMode>("login");
+function toStringValue(value: unknown): string {
+  return typeof value === "string" ? value.trim() : "";
+}
 
-  const [loginPhone, setLoginPhone] = useState("");
-  const [loginPassword, setLoginPassword] = useState("");
+function uniqueValues(values: string[]): string[] {
+  return Array.from(new Set(values.filter(Boolean)));
+}
+
+export default function RegisterPage() {
+  const { register, verify, resendVerificationCode } = useAuth();
 
   const [fullName, setFullName] = useState("");
   const [registerPhone, setRegisterPhone] = useState("");
@@ -97,13 +100,6 @@ export default function AuthPage() {
 
   const [otpRequired, setOtpRequired] = useState(false);
   const [verificationEmail, setVerificationEmail] = useState("");
-  const [otpCode, setOtpCode] = useState("");
-  const [otpContext, setOtpContext] = useState<"login" | "register" | null>(null);
-  const [forgotPasswordOpen, setForgotPasswordOpen] = useState(false);
-  const [forgotPasswordEmail, setForgotPasswordEmail] = useState("");
-  const [forgotPasswordCode, setForgotPasswordCode] = useState("");
-  const [forgotPasswordNewPassword, setForgotPasswordNewPassword] = useState("");
-  const [forgotPasswordCodeSent, setForgotPasswordCodeSent] = useState(false);
 
   const [status, setStatus] = useState<StatusMessage | null>(null);
   const [phoneCheck, setPhoneCheck] = useState<PhoneCheckState>({ state: "idle" });
@@ -112,7 +108,7 @@ export default function AuthPage() {
   const [loadingMeta, setLoadingMeta] = useState(true);
   const [loadingParishes, setLoadingParishes] = useState(false);
   const [districts, setDistricts] = useState<UgandaDistrictOut[]>([]);
-  const [parishes, setParishes] = useState<UgandaParishOut[]>([]);
+  const [parishOptions, setParishOptions] = useState<string[]>([]);
   const [onboardingOptions, setOnboardingOptions] = useState<OnboardingOptionsOut | null>(null);
 
   const parseError = (err: unknown) => {
@@ -176,25 +172,19 @@ export default function AuthPage() {
   useEffect(() => {
     let active = true;
     const loadParishes = async () => {
-      const districtValue = district.trim();
-      if (!districtValue) {
-        setParishes([]);
-        setParish("");
+      if (!district) {
+        setParishOptions([]);
         return;
       }
       setLoadingParishes(true);
       try {
-        const response = await api.referenceParishes(districtValue);
+        const response = await api.referenceParishes(district);
         if (!active) return;
-        const items = response.items ?? [];
-        setParishes(items);
-        if (!items.some((item) => item.id === parish || item.name === parish)) {
-          setParish("");
-        }
-      } catch (err) {
+        const names = uniqueValues((response.items ?? []).map((item) => toStringValue(item.name)));
+        setParishOptions(names);
+      } catch {
         if (!active) return;
-        setParishes([]);
-        setStatus({ type: "error", message: parseError(err) });
+        setParishOptions([]);
       } finally {
         if (active) setLoadingParishes(false);
       }
@@ -203,16 +193,12 @@ export default function AuthPage() {
     return () => {
       active = false;
     };
-  }, [district, parish]);
+  }, [district]);
 
   const toggleSelection = (value: string, current: string[], setter: (next: string[]) => void) => {
     const key = normalizeSelection(value);
     const exists = current.some((item) => normalizeSelection(item) === key);
-    if (exists) {
-      setter(current.filter((item) => normalizeSelection(item) !== key));
-      return;
-    }
-    setter([...current, value]);
+    setter(exists ? current.filter((item) => normalizeSelection(item) !== key) : [...current, value]);
   };
 
   const phoneStatusLabel = useMemo(() => {
@@ -231,33 +217,15 @@ export default function AuthPage() {
     return "";
   }, [emailCheck]);
 
-  function ensureLoginPhone() {
-    if (!loginPhone.trim()) {
-      setStatus({ type: "error", message: "Enter your phone number." });
-      return false;
-    }
-    return true;
-  }
-
-  function ensureRegisterPhone() {
+  function validateRegistration() {
     if (!registerPhone.trim()) {
       setStatus({ type: "error", message: "Enter a phone number to continue." });
       return false;
     }
-    return true;
-  }
-
-  function ensureRegisterEmail() {
     if (!registerEmail.trim()) {
       setStatus({ type: "error", message: "Enter your email address." });
       return false;
     }
-    return true;
-  }
-
-  function validateRegistration() {
-    if (!ensureRegisterPhone()) return false;
-    if (!ensureRegisterEmail()) return false;
     if (!fullName.trim()) {
       setStatus({ type: "error", message: "Enter your full name." });
       return false;
@@ -271,7 +239,7 @@ export default function AuthPage() {
       return false;
     }
     if (!parish.trim()) {
-      setStatus({ type: "error", message: "Select your parish." });
+      setStatus({ type: "error", message: "Enter your parish." });
       return false;
     }
     if (isFarmer && crops.length === 0) {
@@ -294,11 +262,15 @@ export default function AuthPage() {
   }
 
   const checkPhone = async () => {
-    if (!ensureRegisterPhone()) return null;
+    if (!registerPhone.trim()) return null;
     setPhoneCheck({ state: "checking" });
     try {
       const response = await api.authPhoneAvailability(registerPhone.trim());
-      setPhoneCheck(response.available ? { state: "available", normalized: response.normalized_phone } : { state: "taken", normalized: response.normalized_phone });
+      setPhoneCheck(
+        response.available
+          ? { state: "available", normalized: response.normalized_phone }
+          : { state: "taken", normalized: response.normalized_phone }
+      );
       return response;
     } catch (err) {
       const message = parseError(err);
@@ -309,7 +281,7 @@ export default function AuthPage() {
   };
 
   const checkEmail = async () => {
-    if (!ensureRegisterEmail()) return null;
+    if (!registerEmail.trim()) return null;
     setEmailCheck({ state: "checking" });
     try {
       const response = await api.authEmailAvailability(registerEmail.trim());
@@ -334,8 +306,6 @@ export default function AuthPage() {
     if (!phoneAvailability || !emailAvailability) return;
     if (!phoneAvailability.available) {
       setStatus({ type: "error", message: "This phone is already registered. Use Sign in instead." });
-      setMode("login");
-      setLoginPhone(registerPhone.trim());
       return;
     }
     if (!emailAvailability.available) {
@@ -359,12 +329,10 @@ export default function AuthPage() {
       });
       if (result.status === "logged_in") {
         setOtpRequired(false);
-        setOtpContext(null);
         setStatus({ type: "info", message: "Account created." });
         return;
       }
       setOtpRequired(true);
-      setOtpContext("register");
       setVerificationEmail(registerEmail.trim());
       setStatus({ type: "info", message: result.message || "Enter the email verification code we sent." });
     } catch (err) {
@@ -372,162 +340,10 @@ export default function AuthPage() {
     }
   };
 
-  const handleLogin = async () => {
-    if (!ensureLoginPhone()) return;
-    setStatus({ type: "info", message: "Signing in..." });
-    try {
-      const result = await login(loginPhone.trim(), loginPassword.trim() || undefined);
-      if (result.status === "logged_in") {
-        setOtpRequired(false);
-        setOtpContext(null);
-        setStatus({ type: "info", message: "Signed in." });
-        return;
-      }
-      setOtpRequired(true);
-      setOtpContext("login");
-      setVerificationEmail(result.user?.email || "");
-      setStatus({ type: "info", message: result.message || "Verify your email before signing in." });
-    } catch (err) {
-      setStatus({ type: "error", message: parseError(err) });
-    }
-  };
-
-  const handleVerify = async () => {
-    if (!verificationEmail.trim()) {
-      setStatus({ type: "error", message: "Missing email address for verification." });
-      return;
-    }
-    if (!otpCode.trim()) {
-      setStatus({ type: "error", message: "Enter the 6-digit code you received." });
-      return;
-    }
-    setStatus({ type: "info", message: "Verifying email..." });
-    try {
-      await verify(verificationEmail.trim(), otpCode.trim());
-      setOtpRequired(false);
-      setOtpContext(null);
-      setStatus({ type: "info", message: "Email verified. You are now signed in." });
-    } catch (err) {
-      setStatus({ type: "error", message: parseError(err) });
-    }
-  };
-
-  const handleResendVerification = async () => {
-    if (!verificationEmail.trim()) {
-      setStatus({ type: "error", message: "Missing email address for verification." });
-      return;
-    }
-    setStatus({ type: "info", message: "Sending a new verification code..." });
-    try {
-      const result = await resendVerificationCode(verificationEmail.trim());
-      setStatus({ type: "info", message: result.message || "A new verification code has been sent." });
-    } catch (err) {
-      setStatus({ type: "error", message: parseError(err) });
-    }
-  };
-
-  const handleForgotPasswordRequest = async () => {
-    if (!forgotPasswordEmail.trim()) {
-      setStatus({ type: "error", message: "Enter your email address to reset your password." });
-      return;
-    }
-    setStatus({ type: "info", message: "Sending reset code..." });
-    try {
-      const result = await requestPasswordReset(forgotPasswordEmail.trim());
-      setForgotPasswordCodeSent(true);
-      setStatus({ type: "info", message: result.message || "If the email exists, a reset code has been sent." });
-    } catch (err) {
-      setStatus({ type: "error", message: parseError(err) });
-    }
-  };
-
-  const handleForgotPasswordReset = async () => {
-    if (!forgotPasswordEmail.trim()) {
-      setStatus({ type: "error", message: "Enter your email address." });
-      return;
-    }
-    if (!forgotPasswordCode.trim()) {
-      setStatus({ type: "error", message: "Enter the reset code from your email." });
-      return;
-    }
-    if (forgotPasswordNewPassword.trim().length < 6) {
-      setStatus({ type: "error", message: "Use a new password with at least 6 characters." });
-      return;
-    }
-    setStatus({ type: "info", message: "Resetting password..." });
-    try {
-      await resetPassword(forgotPasswordEmail.trim(), forgotPasswordCode.trim(), forgotPasswordNewPassword);
-      setForgotPasswordOpen(false);
-      setForgotPasswordCodeSent(false);
-      setForgotPasswordCode("");
-      setForgotPasswordNewPassword("");
-      setStatus({ type: "info", message: "Password reset complete. You are now signed in." });
-    } catch (err) {
-      setStatus({ type: "error", message: parseError(err) });
-    }
-  };
-
   return (
-    <div className="auth-page auth-page-modern auth-page-split">
-      <div className="auth-mode-toggle">
-        <button type="button" className={mode === "login" ? "active" : ""} onClick={() => setMode("login")}>
-          Sign in
-        </button>
-        <button type="button" className={mode === "register" ? "active" : ""} onClick={() => setMode("register")}>
-          Create account
-        </button>
-      </div>
-
-      <div className="auth-split-grid">
-        <section className={`auth-card auth-card-modern auth-login-card${mode === "login" ? " is-active" : ""}`}>
-          <div className="auth-panel-head">
-            <div>
-              <div className="label">Sign in</div>
-              <h2>Access your AGRIK account</h2>
-              <p>Use your phone number and password. Unverified accounts must confirm email first.</p>
-            </div>
-          </div>
-
-          <div className="auth-form-grid auth-form-grid-login">
-            <label className="field auth-span-2">
-              Phone number
-              <input
-                placeholder="+2567..."
-                value={loginPhone}
-                onChange={(event) => setLoginPhone(event.target.value)}
-              />
-            </label>
-
-            <label className="field auth-span-2">
-              Password
-              <input
-                type="password"
-                placeholder="Your password"
-                value={loginPassword}
-                onChange={(event) => setLoginPassword(event.target.value)}
-              />
-            </label>
-          </div>
-
-          <div className="auth-actions auth-actions-stacked">
-            <button className="btn" onClick={handleLogin}>
-              Sign in
-            </button>
-            <button className="btn ghost" onClick={() => setForgotPasswordOpen((current) => !current)}>
-              {forgotPasswordOpen ? "Close password reset" : "Forgot password?"}
-            </button>
-            <button className="btn ghost" onClick={() => setMode("register")}>
-              Create account
-            </button>
-          </div>
-
-          <article className="auth-insight-card compact">
-            <div className="label">New here?</div>
-            <p>Create a separate account with your role, district, parish, and crop or service profile.</p>
-          </article>
-        </section>
-
-        <section className={`auth-card auth-card-modern auth-register-card${mode === "register" ? " is-active" : ""}`}>
+    <div className="auth-page auth-page-modern">
+      <div className="auth-page-solo auth-page-solo-wide">
+        <section className="auth-card auth-card-modern">
           <div className="auth-panel-head">
             <div>
               <div className="label">Create account</div>
@@ -574,12 +390,7 @@ export default function AuthPage() {
                     setPhoneCheck({ state: "idle" });
                   }}
                 />
-                <button
-                  type="button"
-                  className="btn ghost auth-inline-btn"
-                  onClick={checkPhone}
-                  disabled={phoneCheck.state === "checking"}
-                >
+                <button type="button" className="btn ghost auth-inline-btn" onClick={checkPhone} disabled={phoneCheck.state === "checking"}>
                   Check
                 </button>
               </div>
@@ -597,12 +408,7 @@ export default function AuthPage() {
                     setEmailCheck({ state: "idle" });
                   }}
                 />
-                <button
-                  type="button"
-                  className="btn ghost auth-inline-btn"
-                  onClick={checkEmail}
-                  disabled={emailCheck.state === "checking"}
-                >
+                <button type="button" className="btn ghost auth-inline-btn" onClick={checkEmail} disabled={emailCheck.state === "checking"}>
                   Check
                 </button>
               </div>
@@ -632,10 +438,17 @@ export default function AuthPage() {
 
             <label className="field">
               District
-              <select value={district} onChange={(event) => setDistrict(event.target.value)} disabled={loadingMeta}>
+              <select
+                value={district}
+                onChange={(event) => {
+                  setDistrict(event.target.value);
+                  setParish("");
+                }}
+                disabled={loadingMeta}
+              >
                 <option value="">Select district</option>
                 {districts.map((item) => (
-                  <option key={item.id || item.name} value={item.id || item.name}>
+                  <option key={item.id} value={item.name}>
                     {item.name}
                   </option>
                 ))}
@@ -644,14 +457,23 @@ export default function AuthPage() {
 
             <label className="field">
               Parish
-              <select value={parish} onChange={(event) => setParish(event.target.value)} disabled={!district || loadingParishes}>
-                <option value="">{loadingParishes ? "Loading parishes..." : "Select parish"}</option>
-                {parishes.map((item) => (
-                  <option key={item.id || `${item.name}-${item.subcounty}`} value={item.id || item.name}>
-                    {item.subcounty ? `${item.name} (${item.subcounty})` : item.name}
-                  </option>
-                ))}
-              </select>
+              {parishOptions.length > 0 ? (
+                <select value={parish} onChange={(event) => setParish(event.target.value)} disabled={!district || loadingParishes}>
+                  <option value="">{loadingParishes ? "Loading parishes..." : "Select parish"}</option>
+                  {parishOptions.map((option) => (
+                    <option key={option} value={option}>
+                      {option}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <input
+                  value={parish}
+                  onChange={(event) => setParish(event.target.value)}
+                  placeholder={district ? "Type your parish" : "Select a district first"}
+                  disabled={!district}
+                />
+              )}
             </label>
 
             {needsOrganization ? (
@@ -736,97 +558,32 @@ export default function AuthPage() {
             <button className="btn" onClick={handleRegister} disabled={loadingMeta}>
               Create account
             </button>
-            <button className="btn ghost" onClick={() => setMode("login")}>
+            <Link className="btn ghost" to="/auth">
               Have an account?
-            </button>
+            </Link>
           </div>
         </section>
-      </div>
 
-      {otpRequired ? (
-        <section className="auth-card auth-card-modern auth-otp-card">
-          <div className="auth-panel-head">
-            <div>
-              <div className="label">{otpContext === "login" ? "Sign in verification" : "Account verification"}</div>
-              <h2>Verify email</h2>
-              <p>Use the code sent to {verificationEmail || "your email"}.</p>
-            </div>
-          </div>
-          <div className="auth-form-grid auth-form-grid-login">
-            <label className="field auth-span-2">
-              Verification code
-              <input placeholder="123456" value={otpCode} onChange={(event) => setOtpCode(event.target.value)} />
-            </label>
-          </div>
-          <div className="auth-actions auth-actions-stacked">
-            <button className="btn" onClick={handleVerify}>
-              Verify email
-            </button>
-            <button className="btn ghost" onClick={handleResendVerification}>
-              Resend code
-            </button>
-          </div>
-        </section>
-      ) : null}
+        {otpRequired ? (
+          <EmailVerifyPanel
+            email={verificationEmail}
+            title="Account verification"
+            onStatus={setStatus}
+            onVerify={async (code) => {
+              await verify(verificationEmail.trim(), code);
+              setOtpRequired(false);
+              setStatus({ type: "info", message: "Email verified. You are now signed in." });
+            }}
+            onResend={async () => {
+              const result = await resendVerificationCode(verificationEmail.trim());
+              return result.message;
+            }}
+          />
+        ) : null}
 
-      {forgotPasswordOpen ? (
-        <section className="auth-card auth-card-modern auth-otp-card">
-          <div className="auth-panel-head">
-            <div>
-              <div className="label">Password recovery</div>
-              <h2>Reset your password</h2>
-              <p>Use your account email to receive a 6-digit reset code.</p>
-            </div>
-          </div>
-          <div className="auth-form-grid auth-form-grid-login">
-            <label className="field auth-span-2">
-              Email address
-              <input
-                type="email"
-                placeholder="you@example.com"
-                value={forgotPasswordEmail}
-                onChange={(event) => setForgotPasswordEmail(event.target.value)}
-              />
-            </label>
-            {forgotPasswordCodeSent ? (
-              <>
-                <label className="field auth-span-2">
-                  Reset code
-                  <input
-                    placeholder="123456"
-                    value={forgotPasswordCode}
-                    onChange={(event) => setForgotPasswordCode(event.target.value)}
-                  />
-                </label>
-                <label className="field auth-span-2">
-                  New password
-                  <input
-                    type="password"
-                    placeholder="At least 6 characters"
-                    value={forgotPasswordNewPassword}
-                    onChange={(event) => setForgotPasswordNewPassword(event.target.value)}
-                  />
-                </label>
-              </>
-            ) : null}
-          </div>
-          <div className="auth-actions auth-actions-stacked">
-            <button className="btn" onClick={handleForgotPasswordRequest}>
-              {forgotPasswordCodeSent ? "Send another reset code" : "Send reset code"}
-            </button>
-            {forgotPasswordCodeSent ? (
-              <button className="btn ghost" onClick={handleForgotPasswordReset}>
-                Reset password
-              </button>
-            ) : null}
-          </div>
-        </section>
-      ) : null}
+        {status ? <p className={`status ${status.type === "error" ? "error" : ""}`}>{status.message}</p> : null}
 
-      {status ? <p className={`status ${status.type === "error" ? "error" : ""}`}>{status.message}</p> : null}
-
-      <aside className="auth-info auth-info-modern auth-info-split">
-        <article className="auth-insight-card">
+        <aside className="auth-insight-card">
           <div className="label">Selected role</div>
           <h3>{selectedRole?.label ?? "Role"}</h3>
           <p>{selectedRole?.description ?? "Select a role to continue."}</p>
@@ -835,22 +592,8 @@ export default function AuthPage() {
               <li key={item}>{item.split("_").join(" ")}</li>
             ))}
           </ul>
-        </article>
-
-        <article className="auth-insight-card">
-          <div className="label">Location data</div>
-          <div className="auth-mini-grid">
-            <div>
-              <strong>{districts.length || "--"}</strong>
-              <span>Districts</span>
-            </div>
-            <div>
-              <strong>{parishes.length || "--"}</strong>
-              <span>Parishes</span>
-            </div>
-          </div>
-        </article>
-      </aside>
+        </aside>
+      </div>
     </div>
   );
 }

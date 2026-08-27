@@ -40,7 +40,7 @@ export default function AppLayout() {
               Sign out
             </button>
           ) : (
-            <Link className="btn" to="/auth" onClick={() => setMenuOpen(false)}>
+            <Link className="btn" to="/auth/register" onClick={() => setMenuOpen(false)}>
               Get started
             </Link>
           )}

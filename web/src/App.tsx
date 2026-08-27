@@ -3,7 +3,8 @@ import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { useAuth } from "./state/auth";
 import { useAdminAuth } from "./state/adminAuth";
 import Landing from "./pages/Landing";
-import AuthPage from "./pages/AuthPage";
+import LoginPage from "./pages/LoginPage";
+import RegisterPage from "./pages/RegisterPage";
 import AppLayout from "./pages/Layout";
 import PwaInstallPrompt from "./components/PwaInstallPrompt";
 
@@ -118,7 +119,8 @@ export default function App() {
           <Route path="/" element={isAuthed ? <Navigate to={defaultPath} /> : <Landing />} />
           <Route path="/marketplace" element={<PublicMarketplace />} />
           <Route path="/marketplace/listings/:listingId" element={<PublicListingDetails />} />
-          <Route path="/auth" element={isAuthed ? <Navigate to={defaultPath} /> : <AuthPage />} />
+          <Route path="/auth" element={isAuthed ? <Navigate to={defaultPath} /> : <LoginPage />} />
+          <Route path="/auth/register" element={isAuthed ? <Navigate to={defaultPath} /> : <RegisterPage />} />
         </Route>
         <Route path="*" element={<Navigate to={defaultPath} />} />
       </Routes>

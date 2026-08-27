@@ -198,7 +198,7 @@ export default function PublicListingDetails() {
                   <Link className="btn" to="/auth">
                     Sign in
                   </Link>
-                  <Link className="btn ghost" to="/auth">
+                  <Link className="btn ghost" to="/auth/register">
                     Create account
                   </Link>
                 </div>
