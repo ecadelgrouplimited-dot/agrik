@@ -508,17 +508,7 @@ export default function FarmerMarketHub() {
 
   return (
     <section className="farmer-page">
-      <div className="farmer-page-header farmer-command-header">
-        <div className="section-title-with-icon">
-          <span className="section-icon">
-            <Icon name="market" size={18} />
-          </span>
-          <div>
-            <div className="label">Market hub</div>
-            <h1>Publish produce, track price signals, and monitor buyer-facing readiness</h1>
-            <p className="muted">This workspace now helps farmers publish stronger listings, review demand signals, and prepare for better marketplace visibility.</p>
-          </div>
-        </div>
+      <div className="farmer-page-header farmer-command-header header-actions-only">
         <div className="farmer-command-actions">
           <button className="btn ghost small" type="button" onClick={loadHubData}>
             Refresh hub
@@ -538,7 +528,7 @@ export default function FarmerMarketHub() {
           <p className="muted">
             {leadPrediction
               ? `${leadPrediction.crop} in ${leadPrediction.district || "your area"} is trending ${leadPrediction.direction}.`
-              : "Price predictions are still limited, so strong listing quality matters even more."}
+              : "No price prediction yet — listing quality matters more until then."}
           </p>
           <div className="farmer-chip-row">
             <span className="chip">Profile district: {profileDistrict || "Not set"}</span>
@@ -611,7 +601,7 @@ export default function FarmerMarketHub() {
             </span>
             <div>
               <div className="label">Operations view</div>
-              <h3>Market rollout and listing quality</h3>
+              <h3>Listing quality</h3>
             </div>
           </div>
         </div>
@@ -625,9 +615,8 @@ export default function FarmerMarketHub() {
             ))}
           </div>
           <div className="market-phase-note">
-            <strong>Rollout path</strong>
-            <p>Farmers listing produce is live. Provider catalog depth is growing next, followed by stronger buyer and offer workflows.</p>
-            <p>{leadPrediction ? `Lead signal: ${leadPrediction.crop} is trending ${leadPrediction.direction} with ${Math.round((leadPrediction.confidence ?? 0) * 100)}% confidence.` : "No lead price signal is available yet."}</p>
+            <strong>Market signal</strong>
+            <p>{leadPrediction ? `${leadPrediction.crop} is trending ${leadPrediction.direction} with ${Math.round((leadPrediction.confidence ?? 0) * 100)}% confidence.` : "No lead price signal is available yet."}</p>
           </div>
         </div>
       </section>

@@ -105,12 +105,7 @@ export default function FarmerServices() {
 
   return (
     <section className="farmer-page">
-      <div className="farmer-page-header farmer-command-header">
-        <div>
-          <div className="label">Services</div>
-          <h1>Choose the operating support your farm needs</h1>
-          <p className="muted">Compare platform services, activate trials, and keep subscriptions aligned to the season.</p>
-        </div>
+      <div className="farmer-page-header farmer-command-header header-actions-only">
         <div className="farmer-command-actions">
           <button className="btn ghost small" type="button" onClick={loadAll}>
             Refresh

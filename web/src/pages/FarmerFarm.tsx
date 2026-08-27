@@ -1424,9 +1424,8 @@ export default function FarmerFarm() {
             <Icon name="farm" size={18} />
           </span>
           <div>
-            <div className="label">Farm workspace</div>
-            <h1>Break farm work into cleaner pages</h1>
-            <p className="muted">Use farm home for switching, create for clean setup, manage for detailed editing, and settings for alerts and defaults.</p>
+            <div className="label">Portfolio, create &amp; manage</div>
+            <h1>Farm workspace</h1>
           </div>
         </div>
         <div className="farmer-command-actions">
@@ -1449,10 +1448,7 @@ export default function FarmerFarm() {
       <section className="farmer-card farmer-command-hero">
         <div className="farmer-command-hero-copy">
           <div className="label">{currentSection.subtitle}</div>
-          <h3>{activeFarm ? `${activeFarm.name || "Selected farm"} is active in the workspace` : "Start by selecting or creating a farm"}</h3>
-          <p className="muted">
-            Portfolio readiness is {portfolioReadinessScore}/5 with {farms.length} farm{farms.length === 1 ? "" : "s"} in view. Switch farms here, then open the page that matches the task.
-          </p>
+          <h3>{activeFarm ? `${activeFarm.name || "Selected farm"} is active` : "Select or create a farm"}</h3>
           <div className="farmer-chip-row">
             <span className="chip">Farms: {farms.length}</span>
             <span className="chip">Active readiness: {activeFarm ? `${activeFarmReadinessScore}/5` : "--"}</span>

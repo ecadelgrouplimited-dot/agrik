@@ -140,12 +140,7 @@ export default function FarmerHistory() {
 
   return (
     <section className="farmer-page">
-      <div className="farmer-page-header farmer-command-header">
-        <div>
-          <div className="label">History</div>
-          <h1>One activity timeline for advisory, alerts, subscriptions, and market work</h1>
-          <p className="muted">Search across activity, focus by type, and review your most recent farmer actions in one place.</p>
-        </div>
+      <div className="farmer-page-header farmer-command-header header-actions-only">
         <div className="farmer-command-actions">
           <button className="btn ghost small" type="button" onClick={loadHistory}>
             Refresh

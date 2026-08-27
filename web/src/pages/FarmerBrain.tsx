@@ -604,10 +604,10 @@ export default function FarmerBrain() {
         .chatHistory(80)
         .then((res) => {
           const historyMessages = (res.items ?? []).map(normalizeChatMessage);
-          const initial = createConversation("Conversation history");
+          const initial = createConversation();
           const conversation: Conversation = {
             ...initial,
-            title: historyMessages.length ? inferConversationTitle(historyMessages) : "Conversation history",
+            title: historyMessages.length ? inferConversationTitle(historyMessages) : initial.title,
             messages: historyMessages,
           };
           setConversations([conversation]);
@@ -2324,11 +2324,7 @@ export default function FarmerBrain() {
   return (
     <section className="farmer-page farmer-brain-page">
       <div className="farmer-page-header grik-page-header">
-        <div>
-          <div className="label">Dashboard Brain</div>
-          <h1>GRIK Brain</h1>
-          <p className="muted">Ask with text, voice, photos, or short video and get grounded farm guidance fast.</p>
-        </div>
+        <p className="muted">Ask with text, voice, photos, or short video.</p>
         <div className="grik-page-actions">
           <button className="btn ghost small" type="button" onClick={handleNewConversation}>
             <Icon name="plus" size={14} />
@@ -2365,8 +2361,7 @@ export default function FarmerBrain() {
       <div className="grik-hero-grid">
         <section className="farmer-card grik-hero-card grik-hero-card-primary">
           <div className="label">Workspace</div>
-          <h3>Ready for crop advice, checks, and field decisions</h3>
-          <p className="muted">Capture what you see, ask what to do next, and keep follow-ups in one running thread.</p>
+          <h3>Ready for questions</h3>
           <div className="farmer-chip-row">
             <span className="chip">{profile?.user.phone ?? user?.phone ?? "Unknown farmer"}</span>
             <span className="chip">{localeHint ?? "Language auto"}</span>
@@ -2403,7 +2398,7 @@ export default function FarmerBrain() {
           {weather?.next_rain_date ? (
             <p className="muted">Rain window: {new Date(weather.next_rain_date).toLocaleDateString()}.</p>
           ) : (
-            <p className="muted">Use live voice for hands-free questions when you are in the field.</p>
+            <p className="muted">Hands-free questions in the field.</p>
           )}
           <div className="farmer-chip-row">
             <span className="chip">Voice: {selectedVoiceProfile.label}</span>

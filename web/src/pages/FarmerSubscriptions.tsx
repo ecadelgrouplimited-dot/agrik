@@ -95,12 +95,7 @@ export default function FarmerSubscriptions() {
 
   return (
     <section className="farmer-page">
-      <div className="farmer-page-header farmer-command-header">
-        <div>
-          <div className="label">Subscriptions</div>
-          <h1>Plan management and subscription history</h1>
-          <p className="muted">Compare plans, activate trials, and keep a clean view of what has been started before.</p>
-        </div>
+      <div className="farmer-page-header farmer-command-header header-actions-only">
         <div className="farmer-command-actions">
           <button className="btn ghost small" type="button" onClick={loadAll}>
             Refresh

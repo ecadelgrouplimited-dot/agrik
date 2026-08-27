@@ -41,7 +41,7 @@ export default function FarmerFarmHome() {
             </span>
             <div>
               <div className="label">Portfolio</div>
-              <h3>Registered farms and totals</h3>
+              <h3>Farm totals</h3>
             </div>
           </div>
           <div className="farmer-inline-meta">
@@ -94,7 +94,7 @@ export default function FarmerFarmHome() {
             </span>
             <div>
               <div className="label">Switcher</div>
-              <h3>Choose the farm you want to work on</h3>
+              <h3>Your farms</h3>
             </div>
           </div>
           <NavLink to="/dashboard/farm/create" className="btn ghost small">
@@ -193,7 +193,7 @@ export default function FarmerFarmHome() {
             <div className="farmer-card-header">
               <div>
                 <div className="label">Decision support</div>
-                <h3>Priority actions for this farm</h3>
+                <h3>Priority actions</h3>
               </div>
               <NavLink to="/dashboard/farm/settings" className="btn ghost small">
                 <Icon name="services" size={14} />

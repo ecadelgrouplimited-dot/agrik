@@ -161,12 +161,7 @@ export default function FarmerOverview() {
 
   return (
     <section className="farmer-page">
-      <div className="farmer-page-header farmer-command-header">
-        <div>
-          <div className="label">Farmer command center</div>
-          <h1>Run your farm, market, and support tools from one workspace</h1>
-          <p className="muted">Track readiness, move on next actions quickly, and keep weather, services, and advisory work connected.</p>
-        </div>
+      <div className="farmer-page-header farmer-command-header header-actions-only">
         <div className="farmer-command-actions">
           <NavLink to="/dashboard/brain" className="btn small">
             <Icon name="brain" size={14} />
