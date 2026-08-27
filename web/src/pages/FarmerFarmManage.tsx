@@ -1,5 +1,6 @@
 import { useOutletContext } from "react-router-dom";
 import { Icon } from "../components/Visuals";
+import FarmLocationFields from "../components/FarmLocationFields";
 import {
   AGROECOLOGY_PRACTICES,
   CLAIM_STATUS_OPTIONS,
@@ -115,14 +116,12 @@ export default function FarmerFarmManage() {
             Farm name
             <input value={activeFarm.name} onChange={(event) => onActiveFarmChange("name", event.target.value)} placeholder="Main farm" />
           </label>
-          <label className="field">
-            District
-            <input value={activeFarm.district} onChange={(event) => onActiveFarmChange("district", event.target.value)} placeholder="Lira" />
-          </label>
-          <label className="field">
-            Parish
-            <input value={activeFarm.parish} onChange={(event) => onActiveFarmChange("parish", event.target.value)} placeholder="Aromo" />
-          </label>
+          <FarmLocationFields
+            district={activeFarm.district}
+            parish={activeFarm.parish}
+            onDistrictChange={(value) => onActiveFarmChange("district", value)}
+            onParishChange={(value) => onActiveFarmChange("parish", value)}
+          />
           <label className="field farmer-form-span">
             Crops grown
             <FarmerCropSelector options={cropOptions} selected={activeFarm.crops} onChange={(value) => onActiveFarmChange("crops", value)} />

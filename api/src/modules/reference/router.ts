@@ -1,11 +1,23 @@
 import { Router } from "express";
 import { prisma } from "../../lib/prisma.js";
 import { asyncHandler } from "../../middleware/errorHandler.js";
+import { badRequest } from "../../lib/http-error.js";
 import { CROPS, ONBOARDING_ROLES, SERVICE_CATEGORY_OPTIONS } from "./config.js";
 
 const router = Router();
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+const EARTH_RADIUS_KM = 6371;
+
+function haversineDistanceKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const toRad = (deg: number) => (deg * Math.PI) / 180;
+  const dLat = toRad(lat2 - lat1);
+  const dLon = toRad(lon2 - lon1);
+  const a =
+    Math.sin(dLat / 2) ** 2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
+  return EARTH_RADIUS_KM * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
 
 router.get(
   "/uganda/districts",
@@ -16,6 +28,45 @@ router.get(
     });
     const items = districts.map((d) => ({ id: d.id, name: d.name, parish_count: d._count.parishes }));
     res.json({ country: "Uganda", total: items.length, items });
+  })
+);
+
+router.get(
+  "/uganda/nearest-district",
+  asyncHandler(async (req, res) => {
+    const latitude = Number(req.query.latitude);
+    const longitude = Number(req.query.longitude);
+    if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+      throw badRequest("latitude and longitude are required.");
+    }
+
+    const districts = await prisma.district.findMany({
+      where: { latitude: { not: null }, longitude: { not: null } },
+    });
+
+    if (districts.length === 0) {
+      res.json({ match: null, reason: "No districts have known coordinates yet." });
+      return;
+    }
+
+    let closest = districts[0];
+    let closestDistanceKm = haversineDistanceKm(latitude, longitude, closest.latitude!, closest.longitude!);
+    for (const district of districts.slice(1)) {
+      const distanceKm = haversineDistanceKm(latitude, longitude, district.latitude!, district.longitude!);
+      if (distanceKm < closestDistanceKm) {
+        closest = district;
+        closestDistanceKm = distanceKm;
+      }
+    }
+
+    res.json({
+      match: { id: closest.id, name: closest.name },
+      distance_km: Math.round(closestDistanceKm * 10) / 10,
+      // Matched to the nearest district centroid we have coordinates for —
+      // not a real administrative-boundary lookup. Distances well beyond a
+      // district's typical radius mean the true district may differ.
+      approximate: true,
+    });
   })
 );
 

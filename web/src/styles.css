@@ -609,6 +609,25 @@ a {
   color: rgba(11, 11, 11, 0.6);
 }
 
+.location-field-row {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.location-field-row select {
+  flex: 1;
+  min-width: 0;
+}
+
+.location-detect-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
 .auth-actions {
   display: flex;
   flex-wrap: wrap;

@@ -376,6 +376,10 @@ export const api = {
       `/reference/uganda/parishes${query}`
     );
   },
+  referenceNearestDistrict: (latitude: number, longitude: number) =>
+    request<{ match: { id: string; name: string } | null; distance_km?: number; approximate?: boolean; reason?: string }>(
+      `/reference/uganda/nearest-district?latitude=${latitude}&longitude=${longitude}`
+    ),
   referenceUgandaLiveMap: () =>
     request<{
       country: string;
