@@ -1,10 +1,10 @@
 import { ChangeEvent, FormEvent, useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { NavLink, Outlet, useOutletContext } from "react-router-dom";
 import { Icon } from "../components/Visuals";
 import { api } from "../lib/api";
 import { useAuth } from "../state/auth";
 
-type ProfileDetails = {
+export type ProfileDetails = {
   settings: {
     district?: string | null;
     parish?: string | null;
@@ -14,12 +14,12 @@ type ProfileDetails = {
   };
 };
 
-type MarketLocation = {
+export type MarketLocation = {
   district?: string | null;
   parish?: string | null;
 };
 
-type MarketListing = {
+export type MarketListing = {
   id: number;
   userId: string;
   role: string;
@@ -39,7 +39,7 @@ type MarketListing = {
   location: MarketLocation;
 };
 
-type MarketService = {
+export type MarketService = {
   id: number;
   serviceType: string;
   description: string;
@@ -52,7 +52,7 @@ type MarketService = {
   location: MarketLocation;
 };
 
-type MarketPrediction = {
+export type MarketPrediction = {
   crop: string;
   district: string;
   predictedPrice: number | null;
@@ -61,7 +61,7 @@ type MarketPrediction = {
   confidence: number | null;
 };
 
-type ListingFormState = {
+export type ListingFormState = {
   crop: string;
   quantity: string;
   unit: string;
@@ -76,7 +76,7 @@ type ListingFormState = {
   parish: string;
 };
 
-const CROP_OPTIONS = [
+export const CROP_OPTIONS = [
   "Maize",
   "Beans",
   "Cassava",
@@ -94,9 +94,9 @@ const CROP_OPTIONS = [
   "Cabbage",
 ];
 
-const UNIT_OPTIONS = ["kg", "bags", "tons", "crates", "liters"];
-const CURRENCY_OPTIONS = ["UGX", "USD", "KES", "TZS"];
-const GRADE_OPTIONS = ["Premium", "Standard", "Mixed"];
+export const UNIT_OPTIONS = ["kg", "bags", "tons", "crates", "liters"];
+export const CURRENCY_OPTIONS = ["UGX", "USD", "KES", "TZS"];
+export const GRADE_OPTIONS = ["Premium", "Standard", "Mixed"];
 
 function asRecord(value: unknown): Record<string, unknown> {
   if (value && typeof value === "object" && !Array.isArray(value)) {
@@ -142,14 +142,14 @@ function toMediaUrlList(value: unknown): string[] {
   return result;
 }
 
-function formatDate(value: string): string {
+export function formatDate(value: string): string {
   if (!value) return "--";
   const parsed = new Date(value);
   if (Number.isNaN(parsed.getTime())) return "--";
   return parsed.toLocaleDateString();
 }
 
-function formatMoney(value: number, currency: string): string {
+export function formatMoney(value: number, currency: string): string {
   try {
     return new Intl.NumberFormat(undefined, {
       style: "currency",
@@ -228,7 +228,7 @@ function normalizePrediction(raw: unknown): MarketPrediction | null {
   };
 }
 
-function uniqueStrings(values: string[]): string[] {
+export function uniqueStrings(values: string[]): string[] {
   const seen = new Set<string>();
   const result: string[] = [];
   for (const value of values) {
@@ -241,6 +241,52 @@ function uniqueStrings(values: string[]): string[] {
   }
   return result;
 }
+
+export type PublishChecklistItem = { label: string; ready: boolean; detail: string };
+
+export type FarmerMarketWorkspaceContext = {
+  loading: boolean;
+  saving: boolean;
+  uploadingMedia: boolean;
+  message: string | null;
+  error: string | null;
+  profileDistrict: string;
+  profileCrops: string[];
+  myListings: MarketListing[];
+  marketListings: MarketListing[];
+  serviceFeed: MarketService[];
+  predictions: MarketPrediction[];
+  listingFilterCrop: string;
+  setListingFilterCrop: (value: string) => void;
+  listingFilterDistrict: string;
+  setListingFilterDistrict: (value: string) => void;
+  listingDraft: ListingFormState;
+  listingMediaUrls: string[];
+  cropOptions: string[];
+  discoverListings: MarketListing[];
+  openMyListings: number;
+  mediaReadyListings: number;
+  publishChecklist: PublishChecklistItem[];
+  publishReadyCount: number;
+  leadPrediction: MarketPrediction | null;
+  onDraftChange: <K extends keyof ListingFormState>(field: K, value: ListingFormState[K]) => void;
+  removeMedia: (url: string) => void;
+  onUploadListingMedia: (event: ChangeEvent<HTMLInputElement>) => void;
+  handleCreateListing: (event: FormEvent) => void;
+  loadHubData: () => void;
+};
+
+export function useMarketWorkspace() {
+  return useOutletContext<FarmerMarketWorkspaceContext>();
+}
+
+const marketSections = [
+  { path: "/dashboard/market", icon: "overview" as const, label: "Overview", subtitle: "Posture & signals" },
+  { path: "/dashboard/market/sell", icon: "plus" as const, label: "Sell", subtitle: "Publish a listing" },
+  { path: "/dashboard/market/listings", icon: "farm" as const, label: "My listings", subtitle: "Manage published records" },
+  { path: "/dashboard/market/discover", icon: "listings" as const, label: "Discover", subtitle: "Browse open listings" },
+  { path: "/dashboard/market/providers", icon: "services" as const, label: "Providers", subtitle: "Service directory" },
+];
 
 export default function FarmerMarketHub() {
   const { user } = useAuth();
@@ -307,7 +353,7 @@ export default function FarmerMarketHub() {
 
   const openMyListings = useMemo(() => myListings.filter((item) => item.status.toLowerCase() === "open").length, [myListings]);
   const mediaReadyListings = useMemo(() => myListings.filter((item) => item.mediaUrls.length > 0).length, [myListings]);
-  const publishChecklist = useMemo(
+  const publishChecklist = useMemo<PublishChecklistItem[]>(
     () => [
       { label: "Crop", ready: Boolean(listingDraft.crop.trim()), detail: listingDraft.crop.trim() || "Select produce" },
       {
@@ -504,483 +550,72 @@ export default function FarmerMarketHub() {
     }
   };
 
+  const contextValue: FarmerMarketWorkspaceContext = {
+    loading,
+    saving,
+    uploadingMedia,
+    message,
+    error,
+    profileDistrict,
+    profileCrops,
+    myListings,
+    marketListings,
+    serviceFeed,
+    predictions,
+    listingFilterCrop,
+    setListingFilterCrop,
+    listingFilterDistrict,
+    setListingFilterDistrict,
+    listingDraft,
+    listingMediaUrls,
+    cropOptions,
+    discoverListings,
+    openMyListings,
+    mediaReadyListings,
+    publishChecklist,
+    publishReadyCount,
+    leadPrediction,
+    onDraftChange,
+    removeMedia,
+    onUploadListingMedia,
+    handleCreateListing,
+    loadHubData,
+  };
+
   if (loading) return <section className="farmer-page">Loading market hub...</section>;
 
   return (
-    <section className="farmer-page">
+    <section className="farmer-page farm-workspace-shell">
       <div className="farmer-page-header farmer-command-header header-actions-only">
         <div className="farmer-command-actions">
           <button className="btn ghost small" type="button" onClick={loadHubData}>
-            Refresh hub
+            Refresh
           </button>
-          <Link className="btn small" to="/marketplace">
-            Browse public market
-          </Link>
         </div>
       </div>
 
       {(message || error) && <p className={`status ${error ? "error" : ""}`}>{error ?? message}</p>}
 
-      <section className="farmer-card farmer-command-hero">
-        <div className="farmer-command-hero-copy">
-          <div className="label">Market posture</div>
-          <h3>{openMyListings > 0 ? `${openMyListings} listing(s) are currently live from your farm` : "You have not published a live produce listing yet"}</h3>
-          <p className="muted">
-            {leadPrediction
-              ? `${leadPrediction.crop} in ${leadPrediction.district || "your area"} is trending ${leadPrediction.direction}.`
-              : "No price prediction yet — listing quality matters more until then."}
-          </p>
-          <div className="farmer-chip-row">
-            <span className="chip">Profile district: {profileDistrict || "Not set"}</span>
-            <span className="chip">Profile crops: {profileCrops.length}</span>
-            <span className="chip">Evidence-ready listings: {mediaReadyListings}</span>
-          </div>
-        </div>
-        <div className="farmer-command-hero-side">
-          <article className="farmer-command-mini-card">
-            <span className="label">My listings</span>
-            <strong>{myListings.length}</strong>
-            <span className="muted">Published records</span>
-          </article>
-          <article className="farmer-command-mini-card">
-            <span className="label">Open market</span>
-            <strong>{discoverListings.length}</strong>
-            <span className="muted">Matching external listings</span>
-          </article>
-        </div>
-      </section>
-
-      <div className="farmer-kpi-grid">
-        <div className="farmer-kpi-card">
-          <div className="farmer-kpi-head">
-            <span className="kpi-icon">
-              <Icon name="listings" size={16} />
-            </span>
-            <div className="farmer-kpi-label">Open listings</div>
-          </div>
-          <div className="farmer-kpi-value">{openMyListings}</div>
-          <div className="farmer-kpi-meta">Currently visible to buyers</div>
-        </div>
-        <div className="farmer-kpi-card">
-          <div className="farmer-kpi-head">
-            <span className="kpi-icon">
-              <Icon name="upload" size={16} />
-            </span>
-            <div className="farmer-kpi-label">Publish readiness</div>
-          </div>
-          <div className="farmer-kpi-value">{publishReadyCount}/5</div>
-          <div className="farmer-kpi-meta">Current draft quality checks</div>
-        </div>
-        <div className="farmer-kpi-card">
-          <div className="farmer-kpi-head">
-            <span className="kpi-icon">
-              <Icon name="prices" size={16} />
-            </span>
-            <div className="farmer-kpi-label">Price signals</div>
-          </div>
-          <div className="farmer-kpi-value">{predictions.length}</div>
-          <div className="farmer-kpi-meta">Current market intelligence rows</div>
-        </div>
-        <div className="farmer-kpi-card">
-          <div className="farmer-kpi-head">
-            <span className="kpi-icon">
-              <Icon name="services" size={16} />
-            </span>
-            <div className="farmer-kpi-label">Provider feed</div>
-          </div>
-          <div className="farmer-kpi-value">{serviceFeed.length}</div>
-          <div className="farmer-kpi-meta">Visible service records</div>
-        </div>
-      </div>
-
-      <section className="farmer-card">
-        <div className="farmer-card-header">
-          <div className="section-title-with-icon">
-            <span className="section-icon">
-              <Icon name="overview" size={18} />
-            </span>
-            <div>
-              <div className="label">Operations view</div>
-              <h3>Listing quality</h3>
-            </div>
-          </div>
-        </div>
-        <div className="farmer-dashboard-grid market-publish-grid">
-          <div className="farmer-side-summary">
-            {publishChecklist.map((item) => (
-              <div key={item.label} className="farmer-side-summary-item">
-                <span>{item.label}</span>
-                <strong>{item.ready ? "Ready" : "Pending"}</strong>
-              </div>
-            ))}
-          </div>
-          <div className="market-phase-note">
-            <strong>Market signal</strong>
-            <p>{leadPrediction ? `${leadPrediction.crop} is trending ${leadPrediction.direction} with ${Math.round((leadPrediction.confidence ?? 0) * 100)}% confidence.` : "No lead price signal is available yet."}</p>
-          </div>
-        </div>
-      </section>
-
-      <section className="farmer-card">
-        <div className="farmer-card-header">
-          <div className="section-title-with-icon">
-            <span className="section-icon">
-              <Icon name="plus" size={18} />
-            </span>
-            <div>
-              <div className="label">Farmer listing</div>
-              <h3>Publish a stronger produce listing</h3>
-            </div>
-          </div>
-        </div>
-        <div className="farmer-chip-row">
-          {publishChecklist.map((item) => (
-            <span key={item.label} className="chip">
-              {item.label}: {item.ready ? "Ready" : "Pending"}
-            </span>
+      <section className="farmer-card dashboard-subnav-bar no-picker">
+        <nav className="dashboard-subnav" aria-label="Market hub pages">
+          {marketSections.map((item) => (
+            <NavLink
+              key={item.path}
+              to={item.path}
+              end={item.path === "/dashboard/market"}
+              className={({ isActive }) => `dashboard-subnav-link ${isActive ? "active" : ""}`}
+              title={item.subtitle}
+            >
+              <span className="nav-icon">
+                <Icon name={item.icon} size={15} />
+              </span>
+              <strong>{item.label}</strong>
+            </NavLink>
           ))}
-        </div>
-        <form className="farmer-form-grid" onSubmit={handleCreateListing}>
-          <label className="field">
-            Crop
-            <input
-              list="market-crop-options"
-              value={listingDraft.crop}
-              onChange={(event) => onDraftChange("crop", event.target.value)}
-              placeholder="Maize"
-            />
-            <datalist id="market-crop-options">
-              {cropOptions.map((crop) => (
-                <option key={crop} value={crop} />
-              ))}
-            </datalist>
-          </label>
-          <label className="field">
-            Quantity
-            <input
-              type="number"
-              value={listingDraft.quantity}
-              onChange={(event) => onDraftChange("quantity", event.target.value)}
-              placeholder="300"
-            />
-          </label>
-          <label className="field">
-            Unit
-            <select value={listingDraft.unit} onChange={(event) => onDraftChange("unit", event.target.value)}>
-              {UNIT_OPTIONS.map((option) => (
-                <option key={option} value={option}>
-                  {option}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="field">
-            Price
-            <input
-              type="number"
-              value={listingDraft.price}
-              onChange={(event) => onDraftChange("price", event.target.value)}
-              placeholder="1200"
-            />
-          </label>
-          <label className="field">
-            Currency
-            <select value={listingDraft.currency} onChange={(event) => onDraftChange("currency", event.target.value)}>
-              {CURRENCY_OPTIONS.map((option) => (
-                <option key={option} value={option}>
-                  {option}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="field">
-            Grade
-            <select value={listingDraft.grade} onChange={(event) => onDraftChange("grade", event.target.value)}>
-              <option value="">Select grade</option>
-              {GRADE_OPTIONS.map((option) => (
-                <option key={option} value={option}>
-                  {option}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="field farmer-form-span">
-            Listing description
-            <textarea
-              rows={2}
-              value={listingDraft.description}
-              onChange={(event) => onDraftChange("description", event.target.value)}
-              placeholder="Describe quality, harvest date, packaging, and delivery options."
-            />
-          </label>
-          <label className="field">
-            Contact name
-            <input
-              value={listingDraft.contactName}
-              onChange={(event) => onDraftChange("contactName", event.target.value)}
-              placeholder="Okello Moses"
-            />
-          </label>
-          <label className="field">
-            Contact phone
-            <input
-              value={listingDraft.contactPhone}
-              onChange={(event) => onDraftChange("contactPhone", event.target.value)}
-              placeholder="+256700000000"
-            />
-          </label>
-          <label className="field">
-            WhatsApp number
-            <input
-              value={listingDraft.contactWhatsapp}
-              onChange={(event) => onDraftChange("contactWhatsapp", event.target.value)}
-              placeholder="+256700000000"
-            />
-          </label>
-          <label className="field">
-            District
-            <input
-              value={listingDraft.district}
-              onChange={(event) => onDraftChange("district", event.target.value)}
-              placeholder="Lira"
-            />
-          </label>
-          <label className="field">
-            Parish
-            <input
-              value={listingDraft.parish}
-              onChange={(event) => onDraftChange("parish", event.target.value)}
-              placeholder="Aromo"
-            />
-          </label>
-          <label className="field farmer-form-span">
-            Upload listing media evidence
-            <input type="file" multiple accept="image/*" onChange={onUploadListingMedia} disabled={uploadingMedia} />
-            <span className="field-note">Upload photos from web/mobile. Buyers will see this evidence in marketplace feeds.</span>
-          </label>
-          {listingMediaUrls.length > 0 ? (
-            <div className="market-media-manager farmer-form-span">
-              <div className="field-note">Uploaded media ({listingMediaUrls.length})</div>
-              <div className="market-media-grid">
-                {listingMediaUrls.map((url, index) => (
-                  <div key={`${url}-${index}`} className="market-media-item">
-                    <a href={url} target="_blank" rel="noreferrer" className="market-media-thumb">
-                      <img src={url} alt={`Listing upload ${index + 1}`} loading="lazy" />
-                    </a>
-                    <button className="btn ghost tiny market-media-remove" type="button" onClick={() => removeMedia(url)}>
-                      Remove
-                    </button>
-                  </div>
-                ))}
-              </div>
-            </div>
-          ) : null}
-          <div className="market-form-actions">
-            <button className="btn" type="submit" disabled={saving || uploadingMedia}>
-              {saving ? "Publishing..." : uploadingMedia ? "Uploading media..." : "Publish listing"}
-            </button>
-            <span className="field-note">
-              Publish with price, quantity, location, and media so buyers trust the listing faster.
-            </span>
-          </div>
-        </form>
+        </nav>
       </section>
 
-      <section className="farmer-card">
-        <div className="farmer-card-header">
-          <div className="section-title-with-icon">
-            <span className="section-icon">
-              <Icon name="prices" size={18} />
-            </span>
-            <div>
-              <div className="label">Price pulse</div>
-              <h3>Current prediction signals</h3>
-            </div>
-          </div>
-        </div>
-        {predictions.length === 0 ? (
-          <p className="muted">No strong prediction signals yet.</p>
-        ) : (
-          <div className="market-pulse-grid">
-            {predictions.slice(0, 6).map((item, index) => (
-              <article key={`${item.crop}-${item.district}-${index}`} className="market-pulse-card">
-                <div className="market-pulse-top">
-                  <strong>{item.crop}</strong>
-                  <span className={`pill ${item.direction === "down" ? "pill-muted" : ""}`}>{item.direction}</span>
-                </div>
-                <div className="market-pulse-value">
-                  {item.predictedPrice != null ? formatMoney(item.predictedPrice, item.currency || "UGX") : "--"}
-                </div>
-                <div className="farmer-inline-meta">
-                  {[item.district || "District n/a", item.confidence != null ? `${Math.round(item.confidence * 100)}% confidence` : "confidence n/a"].join(
-                    " | "
-                  )}
-                </div>
-              </article>
-            ))}
-          </div>
-        )}
-      </section>
-
-      <section className="farmer-card">
-        <div className="farmer-card-header">
-          <div className="section-title-with-icon">
-            <span className="section-icon">
-              <Icon name="farm" size={18} />
-            </span>
-            <div>
-              <div className="label">My listings</div>
-              <h3>Your current produce listings</h3>
-            </div>
-          </div>
-        </div>
-        {myListings.length === 0 ? (
-          <p className="muted">You have not published any listing yet.</p>
-        ) : (
-          <div className="market-list-grid">
-            {myListings.map((item) => (
-              <article key={item.id} className="market-list-item">
-                <div className="market-list-top">
-                  <strong>{item.crop}</strong>
-                  <span className="pill">{item.status || "open"}</span>
-                </div>
-                <div className="market-list-meta">
-                  {item.quantity != null ? `${item.quantity} ${item.unit || "units"}` : "Quantity --"} |{" "}
-                  {item.price != null ? formatMoney(item.price, item.currency || "UGX") : "Price --"}
-                </div>
-                <div className="market-list-meta">{item.description || "No listing description provided."}</div>
-                <div className="market-list-meta">{[item.location.parish, item.location.district].filter(Boolean).join(", ") || "Location --"}</div>
-                {item.mediaUrls.length > 0 ? (
-                  <div className="market-media-grid">
-                    {item.mediaUrls.slice(0, 4).map((url, index) => (
-                      <a key={`${item.id}-${index}`} href={url} target="_blank" rel="noreferrer" className="market-media-thumb">
-                        <img src={url} alt={`${item.crop} evidence ${index + 1}`} loading="lazy" />
-                      </a>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="farmer-inline-meta">No media evidence attached.</div>
-                )}
-                <div className="market-inline-actions">
-                  <Link className="btn ghost tiny" to={`/marketplace/listings/${item.id}`}>
-                    View details
-                  </Link>
-                </div>
-                <div className="farmer-inline-meta">Published {formatDate(item.createdAt)}</div>
-              </article>
-            ))}
-          </div>
-        )}
-      </section>
-
-      <section className="farmer-card">
-        <div className="farmer-card-header">
-          <div className="section-title-with-icon">
-            <span className="section-icon">
-              <Icon name="listings" size={18} />
-            </span>
-            <div>
-              <div className="label">Discover</div>
-              <h3>Open produce listings from market</h3>
-            </div>
-          </div>
-        </div>
-        <div className="market-filter-grid">
-          <label className="field">
-            Filter by crop
-            <input value={listingFilterCrop} onChange={(event) => setListingFilterCrop(event.target.value)} placeholder="Maize" />
-          </label>
-          <label className="field">
-            Filter by district
-            <input value={listingFilterDistrict} onChange={(event) => setListingFilterDistrict(event.target.value)} placeholder="Lira" />
-          </label>
-        </div>
-        {discoverListings.length === 0 ? (
-          <p className="muted">No matching listings found.</p>
-        ) : (
-          <div className="market-list-grid">
-            {discoverListings.slice(0, 20).map((item) => (
-              <article key={item.id} className="market-list-item">
-                <div className="market-list-top">
-                  <strong>{item.crop}</strong>
-                  <span className="pill">{item.status || "open"}</span>
-                </div>
-                <div className="market-list-meta">
-                  {item.quantity != null ? `${item.quantity} ${item.unit || "units"}` : "Quantity --"} |{" "}
-                  {item.price != null ? formatMoney(item.price, item.currency || "UGX") : "Price --"}
-                </div>
-                <div className="market-list-meta">{item.description || "No listing description provided."}</div>
-                <div className="market-list-meta">{[item.location.parish, item.location.district].filter(Boolean).join(", ") || "Location --"}</div>
-                {item.mediaUrls.length > 0 ? (
-                  <div className="market-media-grid">
-                    {item.mediaUrls.slice(0, 4).map((url, index) => (
-                      <a key={`${item.id}-${index}`} href={url} target="_blank" rel="noreferrer" className="market-media-thumb">
-                        <img src={url} alt={`${item.crop} evidence ${index + 1}`} loading="lazy" />
-                      </a>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="farmer-inline-meta">No media evidence attached.</div>
-                )}
-                <div className="market-inline-actions">
-                  <Link className="btn ghost tiny" to={`/marketplace/listings/${item.id}`}>
-                    View details
-                  </Link>
-                </div>
-                <div className="farmer-inline-meta">Published {formatDate(item.createdAt)}</div>
-              </article>
-            ))}
-          </div>
-        )}
-      </section>
-
-      <section className="farmer-card">
-        <div className="farmer-card-header">
-          <div className="section-title-with-icon">
-            <span className="section-icon">
-              <Icon name="services" size={18} />
-            </span>
-            <div>
-              <div className="label">Service providers</div>
-              <h3>Directory and next onboarding phase</h3>
-            </div>
-          </div>
-        </div>
-        <p className="muted">
-          Next onboarding wave includes mechanics, transporters, input suppliers, and equipment providers listing their services and catalogs.
-        </p>
-        {serviceFeed.length === 0 ? (
-          <p className="muted">No service providers listed yet.</p>
-        ) : (
-          <div className="market-list-grid">
-            {serviceFeed.slice(0, 12).map((item) => (
-              <article key={item.id} className="market-list-item">
-                <div className="market-list-top">
-                  <strong>{item.serviceType}</strong>
-                  <span className="pill">{item.status || "open"}</span>
-                </div>
-                <div className="market-list-meta">{item.description || "Service details will be expanded as provider onboarding launches."}</div>
-                <div className="market-list-meta">
-                  {item.price != null ? formatMoney(item.price, item.currency || "UGX") : "Price by quote"} |{" "}
-                  {item.coverageRadiusKm != null ? `${item.coverageRadiusKm} km radius` : "Coverage n/a"}
-                </div>
-                {item.mediaUrls.length > 0 ? (
-                  <div className="market-media-grid">
-                    {item.mediaUrls.slice(0, 4).map((url, index) => (
-                      <a key={`${item.id}-${index}`} href={url} target="_blank" rel="noreferrer" className="market-media-thumb">
-                        <img src={url} alt={`${item.serviceType} evidence ${index + 1}`} loading="lazy" />
-                      </a>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="farmer-inline-meta">No media evidence attached.</div>
-                )}
-                <div className="farmer-inline-meta">{[item.location.parish, item.location.district].filter(Boolean).join(", ") || "Location --"}</div>
-              </article>
-            ))}
-          </div>
-        )}
-      </section>
+      <Outlet context={contextValue} />
     </section>
   );
 }

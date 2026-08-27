@@ -25,6 +25,11 @@ const FarmerFarmCreate = lazy(() => import("./pages/FarmerFarmCreate"));
 const FarmerFarmManage = lazy(() => import("./pages/FarmerFarmManage"));
 const FarmerFarmSettings = lazy(() => import("./pages/FarmerFarmSettings"));
 const FarmerMarketHub = lazy(() => import("./pages/FarmerMarketHub"));
+const FarmerMarketOverview = lazy(() => import("./pages/FarmerMarketOverview"));
+const FarmerMarketSell = lazy(() => import("./pages/FarmerMarketSell"));
+const FarmerMarketListings = lazy(() => import("./pages/FarmerMarketListings"));
+const FarmerMarketDiscover = lazy(() => import("./pages/FarmerMarketDiscover"));
+const FarmerMarketProviders = lazy(() => import("./pages/FarmerMarketProviders"));
 const FarmerServices = lazy(() => import("./pages/FarmerServices"));
 const FarmerSubscriptions = lazy(() => import("./pages/FarmerSubscriptions"));
 const FarmerBrain = lazy(() => import("./pages/FarmerBrain"));
@@ -98,7 +103,13 @@ export default function App() {
             <Route path="manage" element={<FarmerFarmManage />} />
             <Route path="settings" element={<FarmerFarmSettings />} />
           </Route>
-          <Route path="market" element={<FarmerMarketHub />} />
+          <Route path="market" element={<FarmerMarketHub />}>
+            <Route index element={<FarmerMarketOverview />} />
+            <Route path="sell" element={<FarmerMarketSell />} />
+            <Route path="listings" element={<FarmerMarketListings />} />
+            <Route path="discover" element={<FarmerMarketDiscover />} />
+            <Route path="providers" element={<FarmerMarketProviders />} />
+          </Route>
           <Route path="services" element={<FarmerServices />} />
           <Route path="subscriptions" element={<FarmerSubscriptions />} />
           <Route path="brain" element={<FarmerBrain />} />

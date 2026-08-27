@@ -1469,8 +1469,8 @@ export default function FarmerFarm() {
         </div>
       </section>
 
-      <section className="farmer-card farm-workspace-toolbar">
-        <div className="farm-workspace-picker">
+      <section className="farmer-card dashboard-subnav-bar">
+        <div className="dashboard-subnav-picker">
           <label className="field">
             Active farm
             <select value={activeFarmId} onChange={(event) => setActiveFarmId(event.target.value)}>
@@ -1482,16 +1482,13 @@ export default function FarmerFarm() {
             </select>
           </label>
         </div>
-        <nav className="farm-workspace-nav" aria-label="Farm workspace pages">
+        <nav className="dashboard-subnav" aria-label="Farm workspace pages">
           {farmSections.map((item) => (
-            <NavLink key={item.path} to={item.path} end={item.path === "/dashboard/farm"} className={({ isActive }) => `farm-workspace-nav-link ${isActive ? "active" : ""}`}>
+            <NavLink key={item.path} to={item.path} end={item.path === "/dashboard/farm"} className={({ isActive }) => `dashboard-subnav-link ${isActive ? "active" : ""}`} title={item.subtitle}>
               <span className="nav-icon">
                 <Icon name={item.icon} size={15} />
               </span>
-              <span>
-                <strong>{item.label}</strong>
-                <small>{item.subtitle}</small>
-              </span>
+              <strong>{item.label}</strong>
             </NavLink>
           ))}
         </nav>
