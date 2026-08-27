@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import { Icon } from "./Visuals";
 import { api, type UgandaDistrictOut } from "../lib/api";
 
@@ -18,6 +18,7 @@ function uniqueValues(values: string[]): string[] {
 }
 
 export default function FarmLocationFields({ district, parish, onDistrictChange, onParishChange }: Props) {
+  const parishListId = useId();
   const [districts, setDistricts] = useState<UgandaDistrictOut[]>([]);
   const [parishOptions, setParishOptions] = useState<string[]>([]);
   const [loadingParishes, setLoadingParishes] = useState(false);
@@ -107,36 +108,36 @@ export default function FarmLocationFields({ district, parish, onDistrictChange,
           </select>
           <button
             type="button"
-            className="btn ghost tiny location-detect-btn"
+            className="btn ghost location-detect-btn"
             onClick={handleUseCurrentLocation}
             disabled={locating}
             title="Use current location"
+            aria-label="Use current location"
           >
-            <Icon name="location" size={13} />
-            {locating ? "Locating..." : "Use current location"}
+            <Icon name={locating ? "spark" : "location"} size={15} />
           </button>
         </div>
         {locationStatus ? <span className="field-note">{locationStatus}</span> : null}
       </label>
       <label className="field">
         Parish
-        {parishOptions.length > 0 ? (
-          <select value={parish} onChange={(event) => onParishChange(event.target.value)} disabled={!district || loadingParishes}>
-            <option value="">{loadingParishes ? "Loading..." : "Select parish"}</option>
-            {parishOptions.map((option) => (
-              <option key={option} value={option}>
-                {option}
-              </option>
-            ))}
-          </select>
-        ) : (
-          <input
-            value={parish}
-            onChange={(event) => onParishChange(event.target.value)}
-            placeholder={district ? "Type your parish" : "Select a district first"}
-            disabled={!district}
-          />
-        )}
+        <input
+          list={parishListId}
+          value={parish}
+          onChange={(event) => onParishChange(event.target.value)}
+          placeholder={
+            !district ? "Select a district first" : loadingParishes ? "Loading suggestions..." : "Start typing your parish"
+          }
+          disabled={!district}
+        />
+        <datalist id={parishListId}>
+          {parishOptions.map((option) => (
+            <option key={option} value={option} />
+          ))}
+        </datalist>
+        {district && parishOptions.length === 0 && !loadingParishes ? (
+          <span className="field-note">No suggestions yet for {district} — type the parish name.</span>
+        ) : null}
       </label>
     </>
   );

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useId, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../state/auth";
 import {
@@ -85,6 +85,7 @@ function uniqueValues(values: string[]): string[] {
 
 export default function RegisterPage() {
   const { register, verify, resendVerificationCode } = useAuth();
+  const parishListId = useId();
 
   const [fullName, setFullName] = useState("");
   const [registerPhone, setRegisterPhone] = useState("");
@@ -457,23 +458,20 @@ export default function RegisterPage() {
 
             <label className="field">
               Parish
-              {parishOptions.length > 0 ? (
-                <select value={parish} onChange={(event) => setParish(event.target.value)} disabled={!district || loadingParishes}>
-                  <option value="">{loadingParishes ? "Loading parishes..." : "Select parish"}</option>
-                  {parishOptions.map((option) => (
-                    <option key={option} value={option}>
-                      {option}
-                    </option>
-                  ))}
-                </select>
-              ) : (
-                <input
-                  value={parish}
-                  onChange={(event) => setParish(event.target.value)}
-                  placeholder={district ? "Type your parish" : "Select a district first"}
-                  disabled={!district}
-                />
-              )}
+              <input
+                list={parishListId}
+                value={parish}
+                onChange={(event) => setParish(event.target.value)}
+                placeholder={
+                  !district ? "Select a district first" : loadingParishes ? "Loading suggestions..." : "Start typing your parish"
+                }
+                disabled={!district}
+              />
+              <datalist id={parishListId}>
+                {parishOptions.map((option) => (
+                  <option key={option} value={option} />
+                ))}
+              </datalist>
             </label>
 
             {needsOrganization ? (
