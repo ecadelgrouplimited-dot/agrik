@@ -5,7 +5,6 @@ import { Link } from "react-router-dom";
 import { Icon, type IconName } from "../components/Visuals";
 import { api } from "../lib/api";
 import { asRecord, toNumberValue, toStringValue } from "../lib/marketplace";
-import agrikLogoMark from "../assets/landing/agrik-logo-mark.png";
 import heroFarmerMan from "../assets/landing/hero-farmer-man.jpg";
 import heroFarmerWoman from "../assets/landing/hero-farmer-woman.jpg";
 
@@ -25,13 +24,13 @@ const PROVIDES: { icon: IconName; title: string; body: string }[] = [
   { icon: "umbrella", title: "Inputs, Finance & Insurance Links", body: "Access inputs, credit and crop insurance." },
 ];
 
-const BENEFITS = [
-  "Increase productivity and income",
-  "Reduce losses from pests and extreme weather",
-  "Make data-driven farm decisions",
-  "Access markets and better prices",
-  "Build climate resilience",
-  "Save time, money and resources",
+const BENEFITS: { icon: IconName; title: string; body: string }[] = [
+  { icon: "prices", title: "Increase productivity and income", body: "Turn advisory into higher yields and better returns." },
+  { icon: "shield", title: "Reduce losses from pests and weather", body: "Early warnings cut down avoidable crop damage." },
+  { icon: "brain", title: "Make data-driven farm decisions", body: "Every recommendation is backed by real field data." },
+  { icon: "market", title: "Access markets and better prices", body: "Sell with confidence using live market intelligence." },
+  { icon: "climate", title: "Build climate resilience", body: "Stay ahead of drought, floods, and shifting seasons." },
+  { icon: "history", title: "Save time, money and resources", body: "Less guesswork, less waste, more time in the field." },
 ];
 
 const HOW_STEPS: { icon: IconName; title: string; body: string }[] = [
@@ -939,7 +938,6 @@ export default function Landing() {
     <div className="landing landing-neo">
       <section className="landing-poster-hero">
         <div className="landing-poster-hero-copy">
-          <img className="landing-poster-logo" src={agrikLogoMark} alt="AGRIK - Smart Insights. Stronger Farms." />
           <h1>AI-Powered Agricultural Intelligence for Every Farmer</h1>
           <p className="landing-poster-lead">
             AGRIK is a digital advisory platform that provides weather, soil, crop, pest, market and climate
@@ -958,7 +956,7 @@ export default function Landing() {
             </Link>
           </div>
           <div className="landing-poster-farmer-photo">
-            <img src={heroFarmerMan} alt="Farmer reviewing his AGRIK advisory on a mobile phone in his field" />
+            <img src={heroFarmerWoman} alt="Farmer checking her AGRIK advisory on a mobile phone in her field" />
           </div>
         </div>
 
@@ -1011,19 +1009,27 @@ export default function Landing() {
       </section>
 
       <section className="landing-poster-benefits">
-        <div className="landing-poster-benefits-copy">
+        <div className="landing-poster-benefits-head">
           <p className="eyebrow">Key Benefits</p>
-          <ul>
-            {BENEFITS.map((benefit) => (
-              <li key={benefit}>
-                <Icon name="check-circle" size={18} />
-                <span>{benefit}</span>
-              </li>
-            ))}
-          </ul>
+          <h2>Why farmers choose AGRIK</h2>
         </div>
-        <div className="landing-poster-benefits-photo">
-          <img src={heroFarmerWoman} alt="Farmer checking market and advisory information on the AGRIK app" />
+        <div className="landing-poster-benefits-layout">
+          <div className="landing-poster-benefits-grid">
+            {BENEFITS.map((benefit) => (
+              <div key={benefit.title} className="landing-poster-benefit-card">
+                <span className="landing-poster-benefit-icon">
+                  <Icon name={benefit.icon} size={20} />
+                </span>
+                <div>
+                  <strong>{benefit.title}</strong>
+                  <p>{benefit.body}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="landing-poster-benefits-photo">
+            <img src={heroFarmerMan} alt="Farmer reviewing his AGRIK advisory on a mobile phone in his field" />
+          </div>
         </div>
       </section>
 
