@@ -1,4 +1,4 @@
-type IconName =
+export type IconName =
   | "overview"
   | "farm"
   | "services"
@@ -34,7 +34,18 @@ type IconName =
   | "stop"
   | "wave"
   | "settings"
-  | "location";
+  | "location"
+  | "soil"
+  | "ussd"
+  | "bank"
+  | "microscope"
+  | "tower"
+  | "umbrella"
+  | "cart"
+  | "globe"
+  | "leaf"
+  | "check-circle"
+  | "satellite";
 
 type IconProps = {
   name: IconName;
@@ -324,6 +335,95 @@ function iconPaths(name: IconName) {
         <>
           <path d="M12 21.2s6.8-6 6.8-11.2A6.8 6.8 0 0 0 5.2 10c0 5.2 6.8 11.2 6.8 11.2Z" {...strokeProps} />
           <circle cx="12" cy="9.8" r="2.3" {...strokeProps} />
+        </>
+      );
+    case "soil":
+      return (
+        <>
+          <path d="M4 11.2h16v7.4a1.8 1.8 0 0 1-1.8 1.8H5.8A1.8 1.8 0 0 1 4 18.6v-7.4Z" {...strokeProps} />
+          <path d="M4 14.6h16" {...strokeProps} />
+          <path d="M12 10V4.2M12 4.2 9.4 6.6M12 4.2l2.6 2.4" {...strokeProps} />
+        </>
+      );
+    case "ussd":
+      return (
+        <>
+          <rect x="5.5" y="3" width="13" height="18" rx="2.2" {...strokeProps} />
+          <path d="M9 6.6h6M8.8 10.4h1.6M11.2 10.4h1.6M13.6 10.4h1.6M8.8 13.4h1.6M11.2 13.4h1.6M13.6 13.4h1.6M8.8 16.4h1.6M11.2 16.4h1.6M13.6 16.4h1.6" {...strokeProps} />
+        </>
+      );
+    case "bank":
+      return (
+        <>
+          <path d="M4 9.6 12 4.4l8 5.2" {...strokeProps} />
+          <path d="M5.4 9.9v8.6M9.4 9.9v8.6M14.6 9.9v8.6M18.6 9.9v8.6" {...strokeProps} />
+          <path d="M3.6 18.5h16.8" {...strokeProps} />
+          <path d="M3.6 21h16.8" {...strokeProps} />
+        </>
+      );
+    case "microscope":
+      return (
+        <>
+          <path d="M9 20.4h7.2" {...strokeProps} />
+          <path d="M11 20.4v-3.2a4.4 4.4 0 1 1 4.4-4.4" {...strokeProps} />
+          <path d="M9.2 12.8 6.6 15.4a1.6 1.6 0 0 0 2.3 2.3l2.6-2.6" {...strokeProps} />
+          <path d="M12.6 6.2 15 3.8l2 2-2.4 2.4" {...strokeProps} />
+          <path d="M9.5 9.3l3.2-3.2" {...strokeProps} />
+        </>
+      );
+    case "tower":
+      return (
+        <>
+          <path d="M12 3.6a3.4 3.4 0 0 1 2 6.1L15.4 21h-6.8l1.4-11.3a3.4 3.4 0 0 1 2-6.1Z" {...strokeProps} />
+          <path d="M6.6 8.4a7.6 7.6 0 0 0 0 8M17.4 8.4a7.6 7.6 0 0 1 0 8" {...strokeProps} />
+          <path d="M4 6.2a10.6 10.6 0 0 0 0 12.6M20 6.2a10.6 10.6 0 0 1 0 12.6" {...strokeProps} />
+        </>
+      );
+    case "umbrella":
+      return (
+        <>
+          <path d="M4 12.4a8 8 0 0 1 16 0Z" {...strokeProps} />
+          <path d="M12 12.4V19a2 2 0 0 1-3.4 1.4" {...strokeProps} />
+          <path d="M12 4.2v1.6" {...strokeProps} />
+        </>
+      );
+    case "cart":
+      return (
+        <>
+          <path d="M3.6 4.6h2.2l2.1 11.2h9.4l1.9-7.6H6.6" {...strokeProps} />
+          <circle cx="9.4" cy="19.4" r="1.3" {...strokeProps} />
+          <circle cx="16.2" cy="19.4" r="1.3" {...strokeProps} />
+        </>
+      );
+    case "globe":
+      return (
+        <>
+          <circle cx="12" cy="12" r="8.4" {...strokeProps} />
+          <path d="M3.6 12h16.8" {...strokeProps} />
+          <path d="M12 3.6a13 13 0 0 1 3.4 8.4A13 13 0 0 1 12 20.4 13 13 0 0 1 8.6 12 13 13 0 0 1 12 3.6Z" {...strokeProps} />
+        </>
+      );
+    case "leaf":
+      return (
+        <>
+          <path d="M5.5 18.5C4 12 8 5.5 18.5 5.5 18.5 15.5 12.5 19.5 5.5 18.5Z" {...strokeProps} />
+          <path d="M6 18 12 12" {...strokeProps} />
+        </>
+      );
+    case "check-circle":
+      return (
+        <>
+          <circle cx="12" cy="12" r="8.6" {...strokeProps} />
+          <path d="M8 12.4l2.6 2.6 5.4-5.6" {...strokeProps} />
+        </>
+      );
+    case "satellite":
+      return (
+        <>
+          <path d="M14.8 3.6 20.4 9.2 17.6 12 12 6.4Z" {...strokeProps} />
+          <path d="M9.9 8.3l5.8 5.8-2.4 2.4a4.1 4.1 0 0 1-5.8-5.8Z" {...strokeProps} />
+          <path d="M7 15.2 3.6 18.6" {...strokeProps} />
+          <path d="M17 6.6a5.5 5.5 0 0 1 0 7.8M19 4.6a8.4 8.4 0 0 1 0 11.8" {...strokeProps} />
         </>
       );
     default:

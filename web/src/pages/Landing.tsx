@@ -2,9 +2,63 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { Link } from "react-router-dom";
-import { HeroFarmGraphic, Icon } from "../components/Visuals";
+import { Icon, type IconName } from "../components/Visuals";
 import { api } from "../lib/api";
 import { asRecord, toNumberValue, toStringValue } from "../lib/marketplace";
+import agrikLogoMark from "../assets/landing/agrik-logo-mark.png";
+import heroFarmerMan from "../assets/landing/hero-farmer-man.jpg";
+import heroFarmerWoman from "../assets/landing/hero-farmer-woman.jpg";
+
+const ADVISORY_CARDS: { icon: IconName; title: string; body: string }[] = [
+  { icon: "weather", title: "Weather Forecast", body: "Light rains expected tomorrow. Plan your field activities." },
+  { icon: "leaf", title: "Crop Advisory", body: "High risk of Fall Armyworm on Maize. Monitor your fields." },
+  { icon: "soil", title: "Soil Health Tip", body: "Increase organic matter. Consider applying compost." },
+  { icon: "prices", title: "Market Prices", body: "Maize price is high in your region." },
+  { icon: "shield", title: "Insurance & Finance", body: "Insure your crop today and secure your future." },
+];
+
+const PROVIDES: { icon: IconName; title: string; body: string }[] = [
+  { icon: "weather", title: "Weather & Climate Insights", body: "Local forecasts and climate-risk alerts." },
+  { icon: "leaf", title: "Crop & Pest Advisory", body: "Timely recommendations to protect your crops." },
+  { icon: "soil", title: "Soil Health Management", body: "Improve soil fertility and productivity." },
+  { icon: "market", title: "Market Intelligence", body: "Real-time prices and market opportunities." },
+  { icon: "umbrella", title: "Inputs, Finance & Insurance Links", body: "Access inputs, credit and crop insurance." },
+];
+
+const BENEFITS = [
+  "Increase productivity and income",
+  "Reduce losses from pests and extreme weather",
+  "Make data-driven farm decisions",
+  "Access markets and better prices",
+  "Build climate resilience",
+  "Save time, money and resources",
+];
+
+const HOW_STEPS: { icon: IconName; title: string; body: string }[] = [
+  { icon: "satellite", title: "Data Collection", body: "Weather, soil, crop, pest, market & field data." },
+  { icon: "brain", title: "AI Analysis", body: "AI models analyze data and generate local insights." },
+  { icon: "app", title: "Personalized Advice", body: "Recommendations delivered via USSD, SMS, Voice, Mobile App." },
+  { icon: "users", title: "Farmer Action", body: "Farmers make better decisions and improve productivity." },
+];
+
+const PARTNERS: { icon: IconName; label: string }[] = [
+  { icon: "bank", label: "Ministries of Agriculture" },
+  { icon: "microscope", label: "Research Institutions" },
+  { icon: "users", label: "NGOs & Farmer Organizations" },
+  { icon: "tower", label: "Telecom Operators" },
+  { icon: "finance", label: "Financial Institutions" },
+  { icon: "umbrella", label: "Insurers" },
+  { icon: "leaf", label: "Input Suppliers & Agri Businesses" },
+  { icon: "cart", label: "Market Buyers" },
+];
+
+const ACCESS_CHANNELS: { icon: IconName; label: string; body: string }[] = [
+  { icon: "ussd", label: "USSD", body: "Works on any mobile phone" },
+  { icon: "sms", label: "SMS", body: "Simple text messages" },
+  { icon: "voice", label: "Voice", body: "Local language voice messages" },
+  { icon: "globe", label: "Local Languages", body: "Information in local languages" },
+  { icon: "app", label: "Mobile App", body: "For smartphones and advanced users" },
+];
 
 type MarketSummary = {
   listings: number;
@@ -781,28 +835,9 @@ export default function Landing() {
     }
   }, [liveMap]);
 
-  const resolvedSummary = useMemo(
-    () =>
-      summary ?? {
-        listings: listings.length,
-        offers: offers.length,
-        services: services.length,
-        alerts: alerts.length,
-      },
-    [summary, listings.length, offers.length, services.length, alerts.length]
-  );
-
-  const hasPulseData =
-    resolvedSummary.listings + resolvedSummary.offers + resolvedSummary.services + resolvedSummary.alerts > 0;
-
   const opsData = useMemo(
     () => buildOpsData(summary, listings, offers, services, alerts, prices),
     [summary, listings, offers, services, alerts, prices]
-  );
-
-  const pulseTotal = useMemo(
-    () => resolvedSummary.listings + resolvedSummary.offers + resolvedSummary.services + resolvedSummary.alerts,
-    [resolvedSummary]
   );
 
   const priceSeriesForChart = useMemo(
@@ -902,14 +937,16 @@ export default function Landing() {
 
   return (
     <div className="landing landing-neo">
-      <section className="landing-neo-hero">
-        <div className="landing-neo-copy">
-          <p className="eyebrow">Digital Extension Intelligence For The Farmers</p>
-          <h1>AGRIK is field intelligence built For The Farmers.</h1>
-          <p className="landing-neo-lead">
-            Clear advisory, risk alerts, and finance-ready records across SMS, voice, and mobile.
+      <section className="landing-poster-hero">
+        <div className="landing-poster-hero-copy">
+          <img className="landing-poster-logo" src={agrikLogoMark} alt="AGRIK - Smart Insights. Stronger Farms." />
+          <h1>AI-Powered Agricultural Intelligence for Every Farmer</h1>
+          <p className="landing-poster-lead">
+            AGRIK is a digital advisory platform that provides weather, soil, crop, pest, market and climate
+            information to help farmers make the right decisions, increase productivity and build resilience to
+            climate change.
           </p>
-          <div className="landing-neo-cta">
+          <div className="landing-poster-cta">
             <Link className="btn" to="/auth/register">
               Start with advisory
             </Link>
@@ -920,77 +957,121 @@ export default function Landing() {
               View marketplace
             </Link>
           </div>
-
-          <div className="landing-neo-trust-grid">
-            <article className="landing-neo-trust-card">
-              <span className="landing-neo-trust-icon">
-                <Icon name="sms" size={18} />
-              </span>
-              <div>
-                <strong>Any phone access</strong>
-                <p>Works on basic phones with low data.</p>
-              </div>
-            </article>
-            <article className="landing-neo-trust-card">
-              <span className="landing-neo-trust-icon">
-                <Icon name="climate" size={18} />
-              </span>
-              <div>
-                <strong>Hyperlocal intelligence</strong>
-                <p>Local weather and risk signals in every recommendation.</p>
-              </div>
-            </article>
-            <article className="landing-neo-trust-card">
-              <span className="landing-neo-trust-icon">
-                <Icon name="finance" size={18} />
-              </span>
-              <div>
-                <strong>Finance-ready records</strong>
-                <p>Farm records that support insurance and credit.</p>
-              </div>
-            </article>
+          <div className="landing-poster-farmer-photo">
+            <img src={heroFarmerMan} alt="Farmer reviewing his AGRIK advisory on a mobile phone in his field" />
           </div>
         </div>
 
-        <div className="landing-neo-visual">
-          <div className="landing-neo-hero-art-wrap">
-            <HeroFarmGraphic className="landing-neo-hero-art" />
-            <div className="landing-neo-art-badges">
-              <span>
-                <Icon name="ai" size={14} /> AI advisory
+        <div className="landing-poster-phone-wrap">
+          <div className="landing-poster-phone">
+            <div className="landing-poster-phone-notch" />
+            <div className="landing-poster-phone-header">
+              <span className="landing-poster-phone-menu" aria-hidden="true">
+                <i />
+                <i />
+                <i />
               </span>
-              <span>
-                <Icon name="shield" size={14} /> Verified trust
-              </span>
-              <span>
-                <Icon name="weather" size={14} /> Risk signals
-              </span>
+              <strong>AGRIK</strong>
+              <Icon name="alerts" size={16} />
+            </div>
+            <div className="landing-poster-phone-body">
+              <p className="landing-poster-phone-hello">Hello Farmer!</p>
+              <p className="landing-poster-phone-sub">Here is your farm advisory for today</p>
+              {ADVISORY_CARDS.map((card) => (
+                <div key={card.title} className="landing-poster-advisory-card">
+                  <span className="landing-poster-advisory-icon">
+                    <Icon name={card.icon} size={18} />
+                  </span>
+                  <div>
+                    <strong>{card.title}</strong>
+                    <p>{card.body}</p>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
+        </div>
+      </section>
 
-          <article className="landing-neo-float landing-neo-float-live">
-            <div className="label">Live pulse</div>
-            <strong>{hasPulseData ? pulseTotal : "--"}</strong>
-            <span>Total market and alert events</span>
-          </article>
+      <section className="landing-poster-provides">
+        <p className="eyebrow">What AGRIK Provides</p>
+        <div className="landing-poster-provides-list">
+          {PROVIDES.map((item) => (
+            <article key={item.title}>
+              <span className="landing-poster-provides-icon">
+                <Icon name={item.icon} size={22} />
+              </span>
+              <div>
+                <h3>{item.title}</h3>
+                <p>{item.body}</p>
+              </div>
+            </article>
+          ))}
+        </div>
+      </section>
 
-          <article className="landing-neo-float landing-neo-float-channels">
-            <div className="label">Delivery stack</div>
-            <div className="landing-neo-channel-pills">
-              <span>
-                <Icon name="sms" size={13} /> SMS
-              </span>
-              <span>
-                <Icon name="voice" size={13} /> Voice
-              </span>
-              <span>
-                <Icon name="app" size={13} /> App
-              </span>
-              <span>
-                <Icon name="dash" size={13} /> Dashboard
-              </span>
+      <section className="landing-poster-benefits">
+        <div className="landing-poster-benefits-copy">
+          <p className="eyebrow">Key Benefits</p>
+          <ul>
+            {BENEFITS.map((benefit) => (
+              <li key={benefit}>
+                <Icon name="check-circle" size={18} />
+                <span>{benefit}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+        <div className="landing-poster-benefits-photo">
+          <img src={heroFarmerWoman} alt="Farmer checking market and advisory information on the AGRIK app" />
+        </div>
+      </section>
+
+      <section className="landing-poster-how">
+        <p className="eyebrow">How AGRIK Works</p>
+        <div className="landing-poster-how-steps">
+          {HOW_STEPS.map((step, index) => (
+            <div key={step.title} className="landing-poster-how-step-wrap">
+              <article className="landing-poster-how-step">
+                <span className="landing-poster-how-icon">
+                  <Icon name={step.icon} size={22} />
+                </span>
+                <div>
+                  <strong>{step.title}</strong>
+                  <p>{step.body}</p>
+                </div>
+              </article>
+              {index < HOW_STEPS.length - 1 ? <span className="landing-poster-how-arrow">&rarr;</span> : null}
             </div>
-          </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="landing-poster-partners">
+        <h2>Our Partners &amp; Ecosystem</h2>
+        <div className="landing-poster-partners-grid">
+          {PARTNERS.map((partner) => (
+            <div key={partner.label} className="landing-poster-partner">
+              <Icon name={partner.icon} size={26} />
+              <span>{partner.label}</span>
+            </div>
+          ))}
+        </div>
+        <p className="landing-poster-partners-tagline">Working together to deliver more value to farmers.</p>
+      </section>
+
+      <section className="landing-poster-access">
+        <h2>Accessible to Every Farmer</h2>
+        <div className="landing-poster-access-grid">
+          {ACCESS_CHANNELS.map((channel) => (
+            <div key={channel.label} className="landing-poster-access-item">
+              <span className="landing-poster-access-icon">
+                <Icon name={channel.icon} size={24} />
+              </span>
+              <strong>{channel.label}</strong>
+              <p>{channel.body}</p>
+            </div>
+          ))}
         </div>
       </section>
 
@@ -1236,6 +1317,10 @@ export default function Landing() {
           </aside>
         </div>
       </section>
+
+      <p className="landing-poster-tagline">
+        AGRIK &ndash; Intelligent Insights. Stronger Farms. Better Future. <Icon name="leaf" size={16} />
+      </p>
 
       <section className="landing-neo-final">
         <div className="section-title-with-icon">
