@@ -11,7 +11,8 @@ const navItems = [
   { label: "Market Hub", path: "/dashboard/market", subtitle: "Listings & services", icon: "market" as const },
   { label: "Services", path: "/dashboard/services", subtitle: "AGRIK subscriptions", icon: "services" as const },
   { label: "Subscriptions", path: "/dashboard/subscriptions", subtitle: "Plans & billing", icon: "subscriptions" as const },
-  { label: "Farmer Brain", path: "/dashboard/brain", subtitle: "Ask GRIK AI", icon: "brain" as const },
+  { label: "Ask GRIK", path: "/dashboard/brain", subtitle: "Chat, photos & voice", icon: "brain" as const },
+  { label: "Farmer Brain", path: "/dashboard/brain/insights", subtitle: "Farm signals & insights", icon: "activity" as const },
   { label: "History", path: "/dashboard/history", subtitle: "Timeline & activity", icon: "history" as const },
   { label: "Settings", path: "/dashboard/settings", subtitle: "Location & alerts", icon: "settings" as const },
 ];
@@ -26,9 +27,11 @@ export default function FarmerLayout() {
   }, [location.pathname]);
 
   const current = useMemo(() => {
-    return (
-      navItems.find((item) => (item.path === "/dashboard" ? location.pathname === "/dashboard" : location.pathname.startsWith(item.path))) || navItems[0]
+    const matches = navItems.filter((item) =>
+      item.path === "/dashboard" ? location.pathname === "/dashboard" : location.pathname.startsWith(item.path)
     );
+    // Prefer the most specific (longest) path match, since some nav paths are prefixes of others (e.g. /dashboard/brain vs /dashboard/brain/insights).
+    return matches.sort((a, b) => b.path.length - a.path.length)[0] || navItems[0];
   }, [location.pathname]);
 
   return (
@@ -40,7 +43,12 @@ export default function FarmerLayout() {
         </div>
         <nav className="farmer-nav">
           {navItems.map((item) => (
-            <NavLink key={item.path} to={item.path} end={item.path === "/dashboard"} className={({ isActive }) => `farmer-link ${isActive ? "active" : ""}`}>
+            <NavLink
+              key={item.path}
+              to={item.path}
+              end={item.path === "/dashboard" || item.path === "/dashboard/brain"}
+              className={({ isActive }) => `farmer-link ${isActive ? "active" : ""}`}
+            >
               <span className="farmer-link-main">
                 <span className="nav-icon">
                   <Icon name={item.icon} size={16} />
@@ -67,7 +75,7 @@ export default function FarmerLayout() {
           <div className="farmer-topbar-actions">
             <div className="farmer-quick-links">
               <NavLink to="/dashboard/brain" className="btn ghost tiny">
-                Brain
+                Ask GRIK
               </NavLink>
               <NavLink to="/dashboard/market" className="btn ghost tiny">
                 Market
@@ -88,7 +96,7 @@ export default function FarmerLayout() {
         <MobileFabMenu
           title="Actions"
           actions={[
-            { label: "Open brain", to: "/dashboard/brain", icon: "brain" },
+            { label: "Ask GRIK", to: "/dashboard/brain", icon: "brain" },
             { label: "Open market", to: "/dashboard/market", icon: "market" },
             { label: "Farm workspace", to: "/dashboard/farm", icon: "farm" },
             { label: "History", to: "/dashboard/history", icon: "history" },

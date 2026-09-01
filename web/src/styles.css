@@ -2906,8 +2906,16 @@ a {
   gap: 12px;
 }
 
+.ask-grik-page,
 .farmer-brain-page {
   gap: 12px;
+}
+
+.grik-brain-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 12px;
+  align-items: start;
 }
 
 .grik-hero-grid {
@@ -2926,6 +2934,13 @@ a {
   grid-template-columns: minmax(0, 1.9fr) minmax(250px, 0.95fr);
   gap: 10px;
   align-items: start;
+}
+
+.grik-layout-solo {
+  grid-template-columns: minmax(0, 1fr);
+  max-width: 920px;
+  margin: 0 auto;
+  width: 100%;
 }
 
 .grik-chat-card {

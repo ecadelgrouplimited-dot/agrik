@@ -139,10 +139,10 @@ export default function FarmerOverview() {
     if (recentMessages === 0) {
       items.push({
         id: "brain",
-        title: "Start using GRIK Brain",
+        title: "Start using Ask GRIK",
         detail: "Ask a crop, weather, or market question and create your first advisory thread.",
         to: "/dashboard/brain",
-        action: "Open brain",
+        action: "Ask GRIK",
       });
     }
     if (items.length === 0) {
@@ -165,7 +165,7 @@ export default function FarmerOverview() {
         <div className="farmer-command-actions">
           <NavLink to="/dashboard/brain" className="btn small">
             <Icon name="brain" size={14} />
-            Open brain
+            Ask GRIK
           </NavLink>
           <NavLink to="/dashboard/market" className="btn ghost small">
             <Icon name="market" size={14} />
