@@ -17,14 +17,21 @@ const navItems = [
   { label: "Settings", path: "/dashboard/settings", subtitle: "Location & alerts", icon: "settings" as const },
 ];
 
+const SIDEBAR_COLLAPSED_KEY = "agrik_farmer_sidebar_collapsed";
+
 export default function FarmerLayout() {
   const { user, logout } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === "true");
   const location = useLocation();
 
   useEffect(() => {
     setMenuOpen(false);
   }, [location.pathname]);
+
+  useEffect(() => {
+    localStorage.setItem(SIDEBAR_COLLAPSED_KEY, String(sidebarCollapsed));
+  }, [sidebarCollapsed]);
 
   const current = useMemo(() => {
     const matches = navItems.filter((item) =>
@@ -35,11 +42,22 @@ export default function FarmerLayout() {
   }, [location.pathname]);
 
   return (
-    <div className={`farmer-shell ${menuOpen ? "menu-open" : ""}`}>
+    <div className={`farmer-shell ${menuOpen ? "menu-open" : ""} ${sidebarCollapsed ? "sidebar-collapsed" : ""}`}>
       <div className="farmer-backdrop" onClick={() => setMenuOpen(false)} aria-hidden="true" />
       <aside className="farmer-sidebar">
-        <div className="farmer-brand">
-          <BrandLogo subtitle="Farmer Portal" compact />
+        <div className="farmer-sidebar-head">
+          <div className="farmer-brand">
+            <BrandLogo subtitle="Farmer Portal" compact />
+          </div>
+          <button
+            className={`farmer-sidebar-toggle ${sidebarCollapsed ? "is-collapsed" : ""}`}
+            type="button"
+            onClick={() => setSidebarCollapsed((prev) => !prev)}
+            title={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+            aria-label={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+          >
+            <Icon name="chevron" size={15} />
+          </button>
         </div>
         <nav className="farmer-nav">
           {navItems.map((item) => (
@@ -48,6 +66,7 @@ export default function FarmerLayout() {
               to={item.path}
               end={item.path === "/dashboard" || item.path === "/dashboard/brain"}
               className={({ isActive }) => `farmer-link ${isActive ? "active" : ""}`}
+              title={sidebarCollapsed ? item.label : undefined}
             >
               <span className="farmer-link-main">
                 <span className="nav-icon">

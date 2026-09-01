@@ -1014,6 +1014,11 @@ a {
   display: grid;
   grid-template-columns: 270px minmax(0, 1fr);
   background: linear-gradient(165deg, rgba(31, 111, 61, 0.05), rgba(197, 159, 99, 0.08));
+  transition: grid-template-columns 0.2s ease;
+}
+
+.farmer-shell.sidebar-collapsed {
+  grid-template-columns: 76px minmax(0, 1fr);
 }
 
 .farmer-backdrop {
@@ -1031,6 +1036,71 @@ a {
   top: 0;
   height: 100vh;
   overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.farmer-sidebar-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.sidebar-collapsed .farmer-sidebar {
+  padding: 24px 14px;
+}
+
+.sidebar-collapsed .farmer-sidebar-head {
+  justify-content: center;
+}
+
+.sidebar-collapsed .farmer-brand {
+  display: none;
+}
+
+.farmer-sidebar-toggle {
+  flex-shrink: 0;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--color-white);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.2s ease, transform 0.2s ease;
+}
+
+.farmer-sidebar-toggle:hover {
+  background: rgba(255, 255, 255, 0.18);
+}
+
+.farmer-sidebar-toggle svg {
+  transition: transform 0.2s ease;
+}
+
+.farmer-sidebar-toggle.is-collapsed svg {
+  transform: rotate(180deg);
+}
+
+.sidebar-collapsed .farmer-link-label,
+.sidebar-collapsed .farmer-link-sub {
+  display: none;
+}
+
+.sidebar-collapsed .farmer-link {
+  padding: 10px;
+}
+
+.sidebar-collapsed .farmer-link-main {
+  justify-content: center;
+}
+
+.sidebar-collapsed .nav-icon {
+  width: 28px;
+  height: 28px;
 }
 
 .farmer-brand {
@@ -2938,8 +3008,6 @@ a {
 
 .grik-layout-solo {
   grid-template-columns: minmax(0, 1fr);
-  max-width: 920px;
-  margin: 0 auto;
   width: 100%;
 }
 
@@ -3067,7 +3135,8 @@ a {
 }
 
 .grik-chat-stream {
-  max-height: 460px;
+  min-height: 420px;
+  max-height: 72vh;
   background: linear-gradient(170deg, rgba(31, 111, 61, 0.07), rgba(255, 255, 255, 0.9));
 }
 
@@ -5634,8 +5703,30 @@ a {
 }
 
 @media (max-width: 1080px) {
-  .farmer-shell {
+  .farmer-shell,
+  .farmer-shell.sidebar-collapsed {
     grid-template-columns: 1fr;
+  }
+
+  .farmer-sidebar-toggle {
+    display: none;
+  }
+
+  .sidebar-collapsed .farmer-link-label,
+  .sidebar-collapsed .farmer-link-sub {
+    display: block;
+  }
+
+  .sidebar-collapsed .farmer-link-main {
+    justify-content: flex-start;
+  }
+
+  .sidebar-collapsed .farmer-sidebar-head {
+    justify-content: flex-start;
+  }
+
+  .sidebar-collapsed .farmer-brand {
+    display: block;
   }
 
   .farmer-backdrop {

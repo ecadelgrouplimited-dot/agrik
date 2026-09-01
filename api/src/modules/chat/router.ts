@@ -32,13 +32,42 @@ async function buildHistoryContext(conversationId: string): Promise<{ role: "use
 const router = Router();
 router.use(requireAuth);
 
+type FollowUp = { text: string; type: "ask" | "confirm" };
+
+const FOLLOW_UPS_SCHEMA_NOTE = `  "follow_ups": [{ "text": string, "type": "ask" | "confirm" }]
+    // 0-3 short follow-ups. type "ask" = a question the FARMER could tap to ask YOU next
+    // (phrased in the farmer's voice, e.g. "What fungicide should I use?"). type "confirm" =
+    // a clarifying question YOU are asking the FARMER that they need to answer (e.g. "Do you
+    // see the same spots on other plants?"). Never mix the two voices in one entry.`;
+
+/** Tolerates the old plain string[] shape (pre-classification messages already in history) and model output that omits "type". */
+function normalizeFollowUps(raw: unknown): FollowUp[] {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .map((item): FollowUp | null => {
+      if (typeof item === "string") {
+        const text = item.trim();
+        return text ? { text, type: "ask" } : null;
+      }
+      if (item && typeof item === "object" && typeof (item as { text?: unknown }).text === "string") {
+        const text = ((item as { text: string }).text || "").trim();
+        if (!text) return null;
+        const type = (item as { type?: unknown }).type === "confirm" ? "confirm" : "ask";
+        return { text, type };
+      }
+      return null;
+    })
+    .filter((item): item is FollowUp => item != null)
+    .slice(0, 3);
+}
+
 const CHAT_SYSTEM_PROMPT = `You are GRIK, AGRIK's field advisory assistant for smallholder farmers, buyers, and agri service providers in Uganda.
 Answer practically and concisely. If a locale hint is given, respond in that language; otherwise reply in the same language as the user's message.
 Always respond with a single JSON object, no prose outside it, matching exactly:
 {
   "reply": string,
   "language": string,               // BCP-47-ish language name or code you responded in
-  "follow_ups": string[]            // 0-3 short suggested follow-up questions
+${FOLLOW_UPS_SCHEMA_NOTE}
 }`;
 
 function titleFromMessage(message: string): string {
@@ -138,7 +167,7 @@ router.get(
             message: m.message,
             created_at: m.createdAt.toISOString(),
             conversation_id: m.conversationId,
-            follow_ups: metadata.follow_ups ?? undefined,
+            follow_ups: metadata.follow_ups ? normalizeFollowUps(metadata.follow_ups) : undefined,
             media_analysis: metadata.media_analysis ?? undefined,
             attachments: metadata.attachments ?? undefined,
           };
@@ -189,7 +218,7 @@ router.post(
     const parsed = extractJsonObject(raw);
     const reply = (parsed?.reply as string) || raw || "I couldn't generate a response just now.";
     const language = (parsed?.language as string) || body.locale_hint || "en";
-    const followUps = Array.isArray(parsed?.follow_ups) ? (parsed!.follow_ups as string[]) : [];
+    const followUps = normalizeFollowUps(parsed?.follow_ups);
 
     await prisma.chatMessage.create({
       data: {
@@ -214,7 +243,7 @@ Always respond with a single JSON object, no prose outside it, matching exactly:
   "immediate_actions": string[],      // 2-5 concrete actions the farmer should take now, ordered by priority
   "field_checks": string[],           // 1-4 things to go check in the field to confirm or rule out the diagnosis
   "top_labels": string[],
-  "follow_ups": string[]              // 2-3 short follow-up questions the farmer could tap to continue this conversation
+${FOLLOW_UPS_SCHEMA_NOTE}
 }`;
 
 const multimodalSchema = z.object({
@@ -328,7 +357,7 @@ router.post(
       top_labels: Array.isArray(parsed?.top_labels) ? parsed!.top_labels : [],
     };
 
-    const followUps = Array.isArray(parsed?.follow_ups) ? (parsed!.follow_ups as string[]) : [];
+    const followUps = normalizeFollowUps(parsed?.follow_ups);
 
     const replyParts = [mediaAnalysis.overall_assessment];
     if (mediaAnalysis.immediate_actions.length > 0) {

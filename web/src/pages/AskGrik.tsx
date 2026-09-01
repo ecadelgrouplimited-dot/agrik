@@ -1,5 +1,5 @@
 import { ChangeEvent, KeyboardEvent, useEffect, useMemo, useRef, useState } from "react";
-import { api, getDeviceId, getToken, type VisionAnalysis } from "../lib/api";
+import { api, getDeviceId, getToken, type FollowUp, type VisionAnalysis } from "../lib/api";
 import { Icon } from "../components/Visuals";
 import { FarmerBrainMessageStream, FarmerBrainRealtimeModal } from "../components/FarmerBrainSections";
 import { useAuth } from "../state/auth";
@@ -21,7 +21,7 @@ type ChatMessage = {
   source_confidence?: number;
   citation_text?: string;
   citations?: AdviceCitation[];
-  follow_ups?: string[];
+  follow_ups?: FollowUp[];
   media_analysis?: VisionAnalysis;
   attachments?: { name: string; url: string }[];
 };
@@ -307,7 +307,7 @@ function normalizeChatMessage(item: {
   role: string;
   message: string;
   created_at: string;
-  follow_ups?: string[];
+  follow_ups?: FollowUp[];
   media_analysis?: VisionAnalysis;
   attachments?: { name: string; url: string }[];
 }): ChatMessage {
@@ -792,7 +792,7 @@ export default function AskGrik() {
 
   const latestAssistantFollowUps = useMemo(() => {
     const latest = [...activeMessages].reverse().find((msg) => msg.role === "assistant" && msg.follow_ups && msg.follow_ups.length > 0);
-    return latest?.follow_ups ?? [];
+    return (latest?.follow_ups ?? []).map((item) => item.text);
   }, [activeMessages]);
 
   const promptSuggestions = useMemo(() => {

@@ -1,7 +1,7 @@
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { Icon } from "./Visuals";
-import type { VisionAnalysis } from "../lib/api";
+import type { FollowUp, VisionAnalysis } from "../lib/api";
 
 /** Models sometimes return confidence as 0-1 and sometimes as 0-100; normalize either to a clamped percentage. */
 function formatConfidencePct(value: number): number {
@@ -29,7 +29,7 @@ type BrainMessage = {
   created_at: string;
   source_confidence?: number;
   citations?: AdviceCitation[];
-  follow_ups?: string[];
+  follow_ups?: FollowUp[];
   media_analysis?: VisionAnalysis;
   attachments?: MessageAttachment[];
 };
@@ -303,18 +303,18 @@ export function FarmerBrainMessageStream({
               {message.follow_ups && message.follow_ups.length > 0 ? (
                 <div className="grik-followups-row">
                   {message.follow_ups.map((followUp) => {
-                    const isClarifyingQuestion = followUp.trim().endsWith("?");
+                    const isClarifyingQuestion = followUp.type === "confirm";
                     return (
                       <button
-                        key={`${message.id}-${followUp}`}
+                        key={`${message.id}-${followUp.text}`}
                         type="button"
                         className={`btn ghost small grik-followup-chip ${isClarifyingQuestion ? "is-question" : ""}`}
                         disabled={sending || mediaBusy || sttBusy || isRecording || realtimeListening}
                         title={isClarifyingQuestion ? "Tap to answer in the message box" : "Tap to ask GRIK this"}
-                        onClick={() => (isClarifyingQuestion ? onFocusAnswer() : void onAskFollowUp(followUp))}
+                        onClick={() => (isClarifyingQuestion ? onFocusAnswer() : void onAskFollowUp(followUp.text))}
                       >
                         {isClarifyingQuestion ? <Icon name="check-circle" size={12} /> : null}
-                        {followUp}
+                        {followUp.text}
                         {isClarifyingQuestion ? <span className="grik-followup-hint">(tap to answer)</span> : null}
                       </button>
                     );

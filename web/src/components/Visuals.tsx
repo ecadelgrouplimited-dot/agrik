@@ -45,7 +45,8 @@ export type IconName =
   | "globe"
   | "leaf"
   | "check-circle"
-  | "satellite";
+  | "satellite"
+  | "chevron";
 
 type IconProps = {
   name: IconName;
@@ -426,6 +427,8 @@ function iconPaths(name: IconName) {
           <path d="M17 6.6a5.5 5.5 0 0 1 0 7.8M19 4.6a8.4 8.4 0 0 1 0 11.8" {...strokeProps} />
         </>
       );
+    case "chevron":
+      return <path d="M15 5 8 12l7 7" {...strokeProps} />;
     default:
       return <circle cx="12" cy="12" r="8" {...strokeProps} />;
   }

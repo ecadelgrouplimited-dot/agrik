@@ -3,6 +3,12 @@ export type ApiError = {
   detail: string;
 };
 
+export type FollowUp = {
+  text: string;
+  /** "ask" = a question the farmer could tap to send to GRIK; "confirm" = GRIK is asking the farmer, who should answer. */
+  type: "ask" | "confirm";
+};
+
 export type VisionIssue = {
   name: string;
   category: string;
@@ -710,7 +716,7 @@ export const api = {
         message: string;
         created_at: string;
         conversation_id?: string | null;
-        follow_ups?: string[];
+        follow_ups?: FollowUp[];
         media_analysis?: VisionAnalysis;
         attachments?: { name: string; url: string }[];
       }[];
@@ -723,7 +729,7 @@ export const api = {
       citations?: { source_id?: string | null; title?: string | null; page?: string | null; file?: string | null; url?: string | null }[];
       source_confidence?: number;
       citation_text?: string;
-      follow_ups?: string[];
+      follow_ups?: FollowUp[];
       media_analysis?: VisionAnalysis;
       conversation_id: string;
     }>(
@@ -773,7 +779,7 @@ export const api = {
       citations?: { source_id?: string | null; title?: string | null; page?: string | null; file?: string | null; url?: string | null }[];
       source_confidence?: number;
       citation_text?: string;
-      follow_ups?: string[];
+      follow_ups?: FollowUp[];
       media_analysis?: VisionAnalysis;
       conversation_id: string;
     }>("/chat/ask-multimodal", formData, CHAT_REQUEST_TIMEOUT_MS, getToken());
