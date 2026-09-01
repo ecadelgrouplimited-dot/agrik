@@ -364,6 +364,7 @@ model ChatMessage {
   conversationId String?  @map("conversation_id")
   role           String
   message        String
+  metadata       Json?
   createdAt      DateTime @default(now()) @map("created_at")
 
   user         User              @relation(fields: [userId], references: [id], onDelete: Cascade)

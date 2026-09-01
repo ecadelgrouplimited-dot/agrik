@@ -1,14 +1,33 @@
 import fs from "node:fs";
 import { Router } from "express";
 import { z } from "zod";
+import type { Prisma } from "@prisma/client";
 import { prisma } from "../../lib/prisma.js";
 import { asyncHandler } from "../../middleware/errorHandler.js";
 import { requireAuth } from "../../middleware/auth.js";
-import { upload } from "../../middleware/upload.js";
+import { upload, publicUrlFor } from "../../middleware/upload.js";
 import { badRequest } from "../../lib/http-error.js";
 import { env } from "../../config/env.js";
 import { aiConfigured, audioConfigured, deepseek, extractJsonObject, openai } from "../../lib/ai.js";
 import { CROPS } from "../reference/config.js";
+
+const HISTORY_CONTEXT_MESSAGES = 10;
+const HISTORY_CONTEXT_CHAR_LIMIT = 800;
+
+/** Recent turns for this conversation, formatted for the model so short follow-up replies ("yes", "only two plants") are understood in context. */
+async function buildHistoryContext(conversationId: string): Promise<{ role: "user" | "assistant"; content: string }[]> {
+  const rows = await prisma.chatMessage.findMany({
+    where: { conversationId },
+    orderBy: { createdAt: "desc" },
+    take: HISTORY_CONTEXT_MESSAGES,
+  });
+  return rows
+    .reverse()
+    .map((row) => ({
+      role: row.role === "assistant" ? ("assistant" as const) : ("user" as const),
+      content: row.message.length > HISTORY_CONTEXT_CHAR_LIMIT ? `${row.message.slice(0, HISTORY_CONTEXT_CHAR_LIMIT)}...` : row.message,
+    }));
+}
 
 const router = Router();
 router.use(requireAuth);
@@ -111,13 +130,19 @@ router.get(
     res.json({
       items: items
         .reverse()
-        .map((m) => ({
-          id: m.id,
-          role: m.role,
-          message: m.message,
-          created_at: m.createdAt.toISOString(),
-          conversation_id: m.conversationId,
-        })),
+        .map((m) => {
+          const metadata = (m.metadata as Record<string, unknown> | null) ?? {};
+          return {
+            id: m.id,
+            role: m.role,
+            message: m.message,
+            created_at: m.createdAt.toISOString(),
+            conversation_id: m.conversationId,
+            follow_ups: metadata.follow_ups ?? undefined,
+            media_analysis: metadata.media_analysis ?? undefined,
+            attachments: metadata.attachments ?? undefined,
+          };
+        }),
     });
   })
 );
@@ -136,6 +161,7 @@ router.post(
     if (!aiConfigured()) throw badRequest("Chat AI is not configured on the server yet.");
 
     const conversationId = await resolveConversationId(req.userId!, body.conversation_id, body.message);
+    const historyContext = await buildHistoryContext(conversationId);
 
     await prisma.chatMessage.create({ data: { userId: req.userId!, conversationId, role: "user", message: body.message } });
     await prisma.chatConversation.update({ where: { id: conversationId }, data: { updatedAt: new Date() } });
@@ -152,6 +178,7 @@ router.post(
       model: env.deepseek.chatModel,
       messages: [
         { role: "system", content: CHAT_SYSTEM_PROMPT },
+        ...historyContext,
         { role: "user", content: userPrompt },
       ],
       temperature: 0.4,
@@ -164,7 +191,15 @@ router.post(
     const language = (parsed?.language as string) || body.locale_hint || "en";
     const followUps = Array.isArray(parsed?.follow_ups) ? (parsed!.follow_ups as string[]) : [];
 
-    await prisma.chatMessage.create({ data: { userId: req.userId!, conversationId, role: "assistant", message: reply } });
+    await prisma.chatMessage.create({
+      data: {
+        userId: req.userId!,
+        conversationId,
+        role: "assistant",
+        message: reply,
+        metadata: followUps.length > 0 ? ({ follow_ups: followUps } as Prisma.InputJsonValue) : undefined,
+      },
+    });
 
     res.json({ reply, language, follow_ups: followUps, conversation_id: conversationId });
   })
@@ -202,8 +237,23 @@ router.post(
     if (!aiConfigured()) throw badRequest("Vision AI is not configured on the server yet.");
 
     const conversationId = await resolveConversationId(req.userId!, body.conversation_id, body.message);
+    const historyContext = await buildHistoryContext(conversationId);
 
-    await prisma.chatMessage.create({ data: { userId: req.userId!, conversationId, role: "user", message: body.message } });
+    // Keep uploaded photos (served from /uploads) instead of deleting them after
+    // analysis, so the attachment thumbnail is still there after a page reload.
+    const attachments = files
+      .filter((file) => file.mimetype.startsWith("image/"))
+      .map((file) => ({ name: file.originalname, url: publicUrlFor(file.filename) }));
+
+    await prisma.chatMessage.create({
+      data: {
+        userId: req.userId!,
+        conversationId,
+        role: "user",
+        message: body.message,
+        metadata: attachments.length > 0 ? ({ attachments } as Prisma.InputJsonValue) : undefined,
+      },
+    });
     await prisma.chatConversation.update({ where: { id: conversationId }, data: { updatedAt: new Date() } });
 
     const imageContents = files.slice(0, 6).map((file) => {
@@ -228,6 +278,7 @@ router.post(
       model: env.deepseek.visionModel,
       messages: [
         { role: "system", content: VISION_SYSTEM_PROMPT },
+        ...historyContext,
         {
           role: "user",
           content: [{ type: "text", text: textPrompt }, ...imageContents],
@@ -240,10 +291,6 @@ router.post(
       // response to nothing (finish_reason: "length" with empty content).
       max_tokens: body.deep_analysis === "true" ? 8000 : 6000,
     });
-
-    for (const file of files) {
-      fs.unlink(file.path, () => undefined);
-    }
 
     const raw = completion.choices[0]?.message?.content ?? "";
     const parsed = extractJsonObject(raw);
@@ -291,7 +338,15 @@ router.post(
     }
     const reply = replyParts.join("\n\n");
 
-    await prisma.chatMessage.create({ data: { userId: req.userId!, conversationId, role: "assistant", message: reply } });
+    await prisma.chatMessage.create({
+      data: {
+        userId: req.userId!,
+        conversationId,
+        role: "assistant",
+        message: reply,
+        metadata: { follow_ups: followUps, media_analysis: mediaAnalysis } as Prisma.InputJsonValue,
+      },
+    });
 
     res.json({
       reply,

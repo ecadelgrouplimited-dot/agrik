@@ -302,12 +302,23 @@ function isLocalConversationId(id: string): boolean {
   return id.startsWith("local-");
 }
 
-function normalizeChatMessage(item: { id: number; role: string; message: string; created_at: string }): ChatMessage {
+function normalizeChatMessage(item: {
+  id: number;
+  role: string;
+  message: string;
+  created_at: string;
+  follow_ups?: string[];
+  media_analysis?: VisionAnalysis;
+  attachments?: { name: string; url: string }[];
+}): ChatMessage {
   return {
     id: item.id,
     role: item.role === "assistant" ? "assistant" : "user",
     message: item.message,
     created_at: item.created_at,
+    follow_ups: item.follow_ups,
+    media_analysis: item.media_analysis,
+    attachments: item.attachments,
   };
 }
 
@@ -486,6 +497,8 @@ export default function AskGrik() {
 
   const messageEndRef = useRef<HTMLDivElement | null>(null);
   const composerRef = useRef<HTMLTextAreaElement | null>(null);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const historyMenuRef = useRef<HTMLDivElement | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const recordingChunksRef = useRef<Blob[]>([]);
   const recordingStreamRef = useRef<MediaStream | null>(null);
@@ -637,6 +650,17 @@ export default function AskGrik() {
     }, SENDING_STAGE_INTERVAL_MS);
     return () => clearInterval(interval);
   }, [sending]);
+
+  useEffect(() => {
+    if (!historyOpen) return;
+    const onPointerDown = (event: MouseEvent) => {
+      if (historyMenuRef.current && !historyMenuRef.current.contains(event.target as Node)) {
+        setHistoryOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", onPointerDown);
+    return () => document.removeEventListener("mousedown", onPointerDown);
+  }, [historyOpen]);
 
 
   useEffect(() => {
@@ -2373,52 +2397,71 @@ export default function AskGrik() {
               <Icon name="plus" size={15} />
               New
             </button>
-            <button
-              className="btn ghost small"
-              type="button"
-              onClick={copyConversation}
-              title="Copy current conversation"
-              aria-label="Copy current conversation"
-            >
-              <Icon name="copy" size={14} />
-              Copy
-            </button>
-            <button
-              className="btn ghost small"
-              type="button"
-              onClick={() => exportConversation("txt")}
-              title="Export TXT"
-              aria-label="Export conversation as TXT"
-            >
-              <Icon name="download" size={14} />
-              TXT
-            </button>
-            <button
-              className="btn ghost small"
-              type="button"
-              onClick={() => exportConversation("json")}
-              title="Export JSON"
-              aria-label="Export conversation as JSON"
-            >
-              <Icon name="download" size={14} />
-              JSON
-            </button>
-          </div>
 
-          <div className="grik-conversation-list">
-            {conversations.map((conversation) => (
+            <div className="grik-history-menu" ref={historyMenuRef}>
               <button
-                key={conversation.id}
+                className={`btn ghost small grik-icon-btn ${historyOpen ? "is-active" : ""}`}
                 type="button"
-                className={`grik-conversation-item ${activeConversation?.id === conversation.id ? "active" : ""}`}
-                onClick={() => setActiveConversationId(conversation.id)}
+                onClick={() => setHistoryOpen((prev) => !prev)}
+                title="Chat history"
+                aria-label="Chat history"
+                aria-expanded={historyOpen}
               >
-                <span className="grik-conversation-title">{conversation.title}</span>
-                <span className="grik-conversation-meta">
-                  {formatDate(conversation.created_at)} | {Math.max(conversation.messages.length, conversation.messageCount ?? 0)} messages
-                </span>
+                <Icon name="history" size={15} />
               </button>
-            ))}
+
+              {historyOpen ? (
+                <div className="grik-history-dropdown">
+                  <div className="grik-conversation-list">
+                    {conversations.map((conversation) => (
+                      <button
+                        key={conversation.id}
+                        type="button"
+                        className={`grik-conversation-item ${activeConversation?.id === conversation.id ? "active" : ""}`}
+                        onClick={() => {
+                          setActiveConversationId(conversation.id);
+                          setHistoryOpen(false);
+                        }}
+                      >
+                        <span className="grik-conversation-title">{conversation.title}</span>
+                        <span className="grik-conversation-meta">
+                          {formatDate(conversation.created_at)} | {Math.max(conversation.messages.length, conversation.messageCount ?? 0)} messages
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                  <div className="grik-history-actions">
+                    <button
+                      className="btn ghost tiny grik-icon-btn"
+                      type="button"
+                      onClick={copyConversation}
+                      title="Copy this conversation"
+                      aria-label="Copy this conversation"
+                    >
+                      <Icon name="copy" size={13} />
+                    </button>
+                    <button
+                      className="btn ghost tiny grik-icon-btn"
+                      type="button"
+                      onClick={() => exportConversation("txt")}
+                      title="Export as TXT"
+                      aria-label="Export conversation as TXT"
+                    >
+                      TXT
+                    </button>
+                    <button
+                      className="btn ghost tiny grik-icon-btn"
+                      type="button"
+                      onClick={() => exportConversation("json")}
+                      title="Export as JSON"
+                      aria-label="Export conversation as JSON"
+                    >
+                      JSON
+                    </button>
+                  </div>
+                </div>
+              ) : null}
+            </div>
           </div>
 
 
@@ -2454,7 +2497,11 @@ export default function AskGrik() {
             onPlayAssistantAudio={playAssistantAudio}
             onCopyMessage={copyMessage}
             onAskFollowUp={(message) => ask(message, buildMediaAskOptions())}
-            onFocusAnswer={() => composerRef.current?.focus()}
+            onFocusAnswer={() => {
+              composerRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+              composerRef.current?.focus();
+              setStatusNote("Type your answer in the box below.");
+            }}
             formatTime={formatTime}
             formatCitation={formatCitation}
             messageEndRef={messageEndRef}

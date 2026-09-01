@@ -703,9 +703,18 @@ export const api = {
     ),
   chatDeleteConversation: (id: string) => request<{ ok: boolean }>(`/chat/conversations/${id}`, { method: "DELETE" }),
   chatHistory: (limit = 30, conversationId?: string) =>
-    request<{ items: { id: number; role: string; message: string; created_at: string; conversation_id?: string | null }[] }>(
-      `/chat/history?limit=${limit}${conversationId ? `&conversation_id=${conversationId}` : ""}`
-    ),
+    request<{
+      items: {
+        id: number;
+        role: string;
+        message: string;
+        created_at: string;
+        conversation_id?: string | null;
+        follow_ups?: string[];
+        media_analysis?: VisionAnalysis;
+        attachments?: { name: string; url: string }[];
+      }[];
+    }>(`/chat/history?limit=${limit}${conversationId ? `&conversation_id=${conversationId}` : ""}`),
   chatAsk: (payload: { message: string; locale_hint?: string; location_hint?: string; conversation_id?: string }) =>
     request<{
       reply: string;
