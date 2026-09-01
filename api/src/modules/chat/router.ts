@@ -68,6 +68,7 @@ router.post(
         { role: "user", content: userPrompt },
       ],
       temperature: 0.4,
+      max_tokens: 2200,
     });
 
     const raw = completion.choices[0]?.message?.content ?? "";
@@ -83,13 +84,15 @@ router.post(
 );
 
 const VISION_SYSTEM_PROMPT = `You are GRIK Vision, an agronomy image analyst for AGRIK. You inspect crop/field photos for smallholder farmers in Uganda.
+Never stop at a bare diagnosis. Every response must give the farmer concrete next steps they can act on today, even when you are uncertain -- state your uncertainty in "overall_assessment" and still propose the most reasonable immediate_actions and field_checks to narrow it down.
 Always respond with a single JSON object, no prose outside it, matching exactly:
 {
   "overall_assessment": string,
   "likely_issues": [{ "name": string, "category": string, "confidence": number, "evidence": string, "recommended_action": string }],
-  "immediate_actions": string[],
-  "field_checks": string[],
-  "top_labels": string[]
+  "immediate_actions": string[],      // 2-5 concrete actions the farmer should take now, ordered by priority
+  "field_checks": string[],           // 1-4 things to go check in the field to confirm or rule out the diagnosis
+  "top_labels": string[],
+  "follow_ups": string[]              // 2-3 short follow-up questions the farmer could tap to continue this conversation
 }`;
 
 const multimodalSchema = z.object({
@@ -140,6 +143,11 @@ router.post(
         },
       ],
       temperature: 0.3,
+      // This model reasons internally before writing the JSON answer, and those hidden
+      // reasoning tokens count against max_tokens -- observed 300-900+ reasoning tokens
+      // per image even on simple prompts. A low budget here silently truncates the
+      // response to nothing (finish_reason: "length" with empty content).
+      max_tokens: body.deep_analysis === "true" ? 8000 : 6000,
     });
 
     for (const file of files) {
@@ -148,11 +156,31 @@ router.post(
 
     const raw = completion.choices[0]?.message?.content ?? "";
     const parsed = extractJsonObject(raw);
+    const truncated = completion.choices[0]?.finish_reason === "length";
+    const analysisFailed = !parsed;
+
+    const fallbackActions = truncated
+      ? [
+          "This photo needed more thinking than usual and got cut off -- send it again, ideally a single close-up of the affected leaf, stalk, or ear.",
+          "If it fails again, describe what you're seeing in a text message and GRIK can still advise you.",
+        ]
+      : analysisFailed
+      ? [
+          "Retake the photo in good daylight, close enough to clearly show the affected part of the plant.",
+          "Describe what you're seeing (spots, wilting, discoloration) so GRIK can advise even without a clear image read.",
+        ]
+      : [];
 
     const mediaAnalysis = {
-      overall_assessment: (parsed?.overall_assessment as string) || "Analysis unavailable for these images.",
+      overall_assessment:
+        (parsed?.overall_assessment as string) ||
+        (truncated
+          ? "The analysis didn't finish in time for this photo."
+          : "Couldn't read a clear diagnosis from this photo."),
       likely_issues: Array.isArray(parsed?.likely_issues) ? parsed!.likely_issues : [],
-      immediate_actions: Array.isArray(parsed?.immediate_actions) ? parsed!.immediate_actions : [],
+      immediate_actions: Array.isArray(parsed?.immediate_actions) && parsed!.immediate_actions.length > 0
+        ? (parsed!.immediate_actions as string[])
+        : fallbackActions,
       field_checks: Array.isArray(parsed?.field_checks) ? parsed!.field_checks : [],
       media_count: files.length,
       model: env.deepseek.visionModel,
@@ -162,12 +190,22 @@ router.post(
       top_labels: Array.isArray(parsed?.top_labels) ? parsed!.top_labels : [],
     };
 
-    const reply = mediaAnalysis.overall_assessment;
+    const followUps = Array.isArray(parsed?.follow_ups) ? (parsed!.follow_ups as string[]) : [];
+
+    const replyParts = [mediaAnalysis.overall_assessment];
+    if (mediaAnalysis.immediate_actions.length > 0) {
+      replyParts.push(
+        ["Next steps:", ...mediaAnalysis.immediate_actions.map((action, index) => `${index + 1}. ${action}`)].join("\n")
+      );
+    }
+    const reply = replyParts.join("\n\n");
+
     await prisma.chatMessage.create({ data: { userId: req.userId!, role: "assistant", message: reply } });
 
     res.json({
       reply,
       language: body.locale_hint || "en",
+      follow_ups: followUps,
       media_analysis: mediaAnalysis,
     });
   })

@@ -89,13 +89,49 @@ function renderMediaAnalysis(message: BrainMessage) {
       <p className="muted">{analysis.overall_assessment || "No summary provided."}</p>
       {analysis.crop_hint ? <p className="muted">Crop hint: {analysis.crop_hint}</p> : null}
       {analysis.selected_model_reason ? <p className="muted">{analysis.selected_model_reason}</p> : null}
-      <div className="grik-media-issue-row">
-        {analysis.likely_issues.slice(0, 4).map((issue) => (
-          <span key={`${message.id}-${issue.name}-${issue.category}`} className="grik-citation-pill">
-            {issue.name} ({Math.round(issue.confidence * 100)}%)
-          </span>
-        ))}
-      </div>
+      {analysis.likely_issues.length > 0 ? (
+        <div className="grik-media-issue-list">
+          {analysis.likely_issues.slice(0, 4).map((issue) => (
+            <div key={`${message.id}-${issue.name}-${issue.category}`} className="grik-media-issue-card">
+              <div className="grik-media-issue-head">
+                <strong>{issue.name}</strong>
+                <span className="grik-citation-pill">{Math.round(issue.confidence * 100)}%</span>
+              </div>
+              {issue.category ? <div className="grik-media-issue-category">{issue.category}</div> : null}
+              {issue.evidence ? <p className="muted">{issue.evidence}</p> : null}
+              {issue.recommended_action ? (
+                <p className="grik-media-issue-action">
+                  <Icon name="check-circle" size={13} /> {issue.recommended_action}
+                </p>
+              ) : null}
+            </div>
+          ))}
+        </div>
+      ) : null}
+      {analysis.immediate_actions.length > 0 ? (
+        <div className="grik-media-action-block">
+          <div className="grik-media-action-title">
+            <Icon name="spark" size={14} /> Do this now
+          </div>
+          <ol className="grik-media-action-list">
+            {analysis.immediate_actions.map((action) => (
+              <li key={`${message.id}-action-${action}`}>{action}</li>
+            ))}
+          </ol>
+        </div>
+      ) : null}
+      {analysis.field_checks.length > 0 ? (
+        <div className="grik-media-action-block">
+          <div className="grik-media-action-title">
+            <Icon name="location" size={14} /> Check in the field
+          </div>
+          <ul className="grik-media-action-list">
+            {analysis.field_checks.map((check) => (
+              <li key={`${message.id}-check-${check}`}>{check}</li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
       {analysis.model_runs && analysis.model_runs.length > 1 ? (
         <div className="grik-media-model-runs">
           {analysis.model_runs.slice(0, 4).map((run) => (
