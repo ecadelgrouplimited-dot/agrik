@@ -23,6 +23,7 @@ type ChatMessage = {
   citations?: AdviceCitation[];
   follow_ups?: string[];
   media_analysis?: VisionAnalysis;
+  attachments?: { name: string; url: string }[];
 };
 
 type Conversation = {
@@ -92,6 +93,18 @@ const REALTIME_MAX_CAPTURE_MS = 12000;
 const REALTIME_VAD_INTERVAL_MS = 180;
 const REALTIME_SPEECH_THRESHOLD = 0.02;
 const REALTIME_USER_MESSAGE_PREFIX = "[Realtime voice]";
+const TEXT_SENDING_STAGES = [
+  "Reading your question...",
+  "Checking recent weather, price, and farm context...",
+  "Preparing a clear recommendation...",
+];
+const VISION_SENDING_STAGES = [
+  "Uploading your photo...",
+  "GRIK is examining the image closely...",
+  "Comparing symptoms against common crop issues...",
+  "Compiling next steps and field checks...",
+];
+const SENDING_STAGE_INTERVAL_MS = 3200;
 const ENABLE_BROWSER_TTS_FALLBACK = false;
 const ENABLE_BROWSER_STT_PREVIEW = false;
 const VOICE_PROFILE_STORAGE_KEY_PREFIX = "agrik_grik_voice_profile";
@@ -447,6 +460,8 @@ export default function FarmerBrain() {
   const [activeConversationId, setActiveConversationId] = useState<string>("");
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
+  const [sendingStageIndex, setSendingStageIndex] = useState(0);
+  const sendingHasMediaRef = useRef(false);
   const [error, setError] = useState<string | null>(null);
   const [statusNote, setStatusNote] = useState<string | null>(null);
   const [profile, setProfile] = useState<ProfileDetails | null>(null);
@@ -488,6 +503,7 @@ export default function FarmerBrain() {
   const [ttsVoiceProfile, setTtsVoiceProfile] = useState<VoiceProfile>("uganda");
 
   const messageEndRef = useRef<HTMLDivElement | null>(null);
+  const composerRef = useRef<HTMLTextAreaElement | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const recordingChunksRef = useRef<Blob[]>([]);
   const recordingStreamRef = useRef<MediaStream | null>(null);
@@ -529,6 +545,10 @@ export default function FarmerBrain() {
     [activeConversationId, conversations]
   );
   const activeMessages = activeConversation?.messages ?? [];
+  const conversationAttachmentCount = useMemo(
+    () => activeMessages.reduce((sum, message) => sum + (message.attachments?.length ?? 0), 0),
+    [activeMessages]
+  );
   const attachedFileCount = selectedImages.length + videoFrames.length;
   const mediaAttachmentLabel = useMemo(
     () => formatMediaAttachmentLabel(selectedImages.length, videoFrames.length),
@@ -583,6 +603,15 @@ export default function FarmerBrain() {
     const storageKey = `${VOICE_PROFILE_STORAGE_KEY_PREFIX}_${user.id}`;
     localStorage.setItem(storageKey, ttsVoiceProfile);
   }, [ttsVoiceProfile, user?.id]);
+
+  useEffect(() => {
+    if (!sending) return;
+    const stages = sendingHasMediaRef.current ? VISION_SENDING_STAGES : TEXT_SENDING_STAGES;
+    const interval = setInterval(() => {
+      setSendingStageIndex((prev) => Math.min(prev + 1, stages.length - 1));
+    }, SENDING_STAGE_INTERVAL_MS);
+    return () => clearInterval(interval);
+  }, [sending]);
 
   useEffect(() => {
     if (conversations.length === 0) {
@@ -2097,13 +2126,18 @@ export default function FarmerBrain() {
     const userMessage = hasMedia
       ? `${voicePrefix}${effectiveMessage}\n\n[${mediaMeta.join(" | ")}]`
       : `${voicePrefix}${effectiveMessage}`;
+    const attachments = files
+      .filter((file) => file.type.startsWith("image/"))
+      .map((file) => ({ name: file.name, url: URL.createObjectURL(file) }));
 
     setConversationMessages(conversationId, (messages) => [
       ...messages,
-      { id: tempId, role: "user", message: userMessage, created_at: now },
+      { id: tempId, role: "user", message: userMessage, created_at: now, attachments },
     ]);
 
     setInput("");
+    sendingHasMediaRef.current = hasMedia;
+    setSendingStageIndex(0);
     setSending(true);
     setError(null);
     setStatusNote(null);
@@ -2334,8 +2368,15 @@ export default function FarmerBrain() {
 
       <div className="grik-hero-grid">
         <section className="farmer-card grik-hero-card grik-hero-card-primary">
-          <div className="label">Workspace</div>
-          <h3>Ready for questions</h3>
+          <div className="section-title-with-icon">
+            <span className="section-icon">
+              <Icon name="users" size={16} />
+            </span>
+            <div>
+              <div className="label">Workspace</div>
+              <h3>Ready for questions</h3>
+            </div>
+          </div>
           <div className="farmer-chip-row">
             <span className="chip">{profile?.user.phone ?? user?.phone ?? "Unknown farmer"}</span>
             <span className="chip">{localeHint ?? "Language auto"}</span>
@@ -2344,8 +2385,15 @@ export default function FarmerBrain() {
         </section>
 
         <section className="farmer-card grik-hero-card">
-          <div className="label">Context coverage</div>
-          <h3>{contextCoverageCount}/4 signals ready</h3>
+          <div className="section-title-with-icon">
+            <span className="section-icon">
+              <Icon name="check-circle" size={16} />
+            </span>
+            <div>
+              <div className="label">Context coverage</div>
+              <h3>{contextCoverageCount}/4 signals ready</h3>
+            </div>
+          </div>
           <div className="grik-hero-metrics">
             <div className="grik-hero-metric">
               <span>Location</span>
@@ -2367,8 +2415,15 @@ export default function FarmerBrain() {
         </section>
 
         <section className="farmer-card grik-hero-card">
-          <div className="label">Live voice</div>
-          <h3>{liveVoiceStateLabel}</h3>
+          <div className="section-title-with-icon">
+            <span className="section-icon">
+              <Icon name="voice" size={16} />
+            </span>
+            <div>
+              <div className="label">Live voice</div>
+              <h3>{liveVoiceStateLabel}</h3>
+            </div>
+          </div>
           {weather?.next_rain_date ? (
             <p className="muted">Rain window: {new Date(weather.next_rain_date).toLocaleDateString()}.</p>
           ) : (
@@ -2452,7 +2507,18 @@ export default function FarmerBrain() {
                 : "Start with a crop symptom or farm decision question."
             }
             activeMessages={activeMessages}
-            attachedLabel={attachedFileCount > 0 ? mediaAttachmentLabel : "No media attached"}
+            attachedLabel={
+              attachedFileCount > 0
+                ? `Attaching: ${mediaAttachmentLabel}`
+                : conversationAttachmentCount > 0
+                  ? `${conversationAttachmentCount} photo${conversationAttachmentCount === 1 ? "" : "s"} shared in this chat`
+                  : "No photos in this chat"
+            }
+            sendingStatusText={
+              sending
+                ? (sendingHasMediaRef.current ? VISION_SENDING_STAGES : TEXT_SENDING_STAGES)[sendingStageIndex]
+                : undefined
+            }
             deepAnalysis={deepAnalysis}
             sending={sending}
             mediaBusy={mediaBusy}
@@ -2464,6 +2530,7 @@ export default function FarmerBrain() {
             onPlayAssistantAudio={playAssistantAudio}
             onCopyMessage={copyMessage}
             onAskFollowUp={(message) => ask(message, buildMediaAskOptions())}
+            onFocusAnswer={() => composerRef.current?.focus()}
             formatTime={formatTime}
             formatCitation={formatCitation}
             messageEndRef={messageEndRef}
@@ -2534,6 +2601,7 @@ export default function FarmerBrain() {
               ) : null}
 
               <textarea
+                ref={composerRef}
                 placeholder="Ask GRIK anything about your crops, weather, or farm..."
                 value={input}
                 onChange={(event) => setInput(event.target.value)}
@@ -2744,8 +2812,15 @@ export default function FarmerBrain() {
 
         <aside className="grik-side">
           <section className="farmer-card">
-            <div className="label">Weather context</div>
-            <h3>Planning window</h3>
+            <div className="section-title-with-icon">
+              <span className="section-icon">
+                <Icon name="weather" size={16} />
+              </span>
+              <div>
+                <div className="label">Weather context</div>
+                <h3>Planning window</h3>
+              </div>
+            </div>
             {contextLoading ? (
               <p className="muted">Loading context...</p>
             ) : weather && weather.days.length > 0 ? (
@@ -2766,8 +2841,15 @@ export default function FarmerBrain() {
           </section>
 
           <section className="farmer-card">
-            <div className="label">Market context</div>
-            <h3>Price pulse</h3>
+            <div className="section-title-with-icon">
+              <span className="section-icon">
+                <Icon name="market" size={16} />
+              </span>
+              <div>
+                <div className="label">Market context</div>
+                <h3>Price pulse</h3>
+              </div>
+            </div>
             {topPrediction ? (
               <div className="grik-market-item">
                 <div>
@@ -2786,8 +2868,15 @@ export default function FarmerBrain() {
           </section>
 
           <section className="farmer-card">
-            <div className="label">Current setup</div>
-            <h3>Session readiness</h3>
+            <div className="section-title-with-icon">
+              <span className="section-icon">
+                <Icon name="settings" size={16} />
+              </span>
+              <div>
+                <div className="label">Current setup</div>
+                <h3>Session readiness</h3>
+              </div>
+            </div>
             <div className="grik-side-summary">
               <div className="grik-side-summary-item">
                 <span>Crop focus</span>
@@ -2809,13 +2898,32 @@ export default function FarmerBrain() {
           </section>
 
           <section className="farmer-card">
-            <div className="label">How GRIK helps</div>
-            <h3>Decision support</h3>
-            <ul className="grik-stack-list">
-              <li>Uses your crop, language, and location when available</li>
-              <li>Combines manuals, recent context, and model reasoning</li>
-              <li>Reads photos and short video when you attach field evidence</li>
-              <li>Suggests follow-up questions to keep the diagnosis moving</li>
+            <div className="section-title-with-icon">
+              <span className="section-icon">
+                <Icon name="brain" size={16} />
+              </span>
+              <div>
+                <div className="label">How GRIK helps</div>
+                <h3>Decision support</h3>
+              </div>
+            </div>
+            <ul className="grik-stack-list grik-icon-list">
+              <li>
+                <Icon name="location" size={13} />
+                Uses your crop, language, and location when available
+              </li>
+              <li>
+                <Icon name="brain" size={13} />
+                Combines manuals, recent context, and model reasoning
+              </li>
+              <li>
+                <Icon name="camera" size={13} />
+                Reads photos and short video when you attach field evidence
+              </li>
+              <li>
+                <Icon name="check-circle" size={13} />
+                Suggests follow-up questions to keep the diagnosis moving
+              </li>
             </ul>
           </section>
         </aside>

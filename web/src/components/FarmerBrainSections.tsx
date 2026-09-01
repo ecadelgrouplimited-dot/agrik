@@ -3,12 +3,23 @@ import remarkGfm from "remark-gfm";
 import { Icon } from "./Visuals";
 import type { VisionAnalysis } from "../lib/api";
 
+/** Models sometimes return confidence as 0-1 and sometimes as 0-100; normalize either to a clamped percentage. */
+function formatConfidencePct(value: number): number {
+  const pct = value > 1 ? value : value * 100;
+  return Math.max(0, Math.min(100, Math.round(pct)));
+}
+
 type AdviceCitation = {
   source_id?: string | null;
   title?: string | null;
   page?: string | null;
   file?: string | null;
   url?: string | null;
+};
+
+type MessageAttachment = {
+  name: string;
+  url: string;
 };
 
 type BrainMessage = {
@@ -20,6 +31,7 @@ type BrainMessage = {
   citations?: AdviceCitation[];
   follow_ups?: string[];
   media_analysis?: VisionAnalysis;
+  attachments?: MessageAttachment[];
 };
 
 type MessageStreamProps = {
@@ -27,6 +39,7 @@ type MessageStreamProps = {
   activeConversationMeta: string;
   activeMessages: BrainMessage[];
   attachedLabel: string;
+  sendingStatusText?: string;
   deepAnalysis: boolean;
   sending: boolean;
   mediaBusy: boolean;
@@ -38,6 +51,7 @@ type MessageStreamProps = {
   onPlayAssistantAudio: (message: BrainMessage) => Promise<void>;
   onCopyMessage: (message: string) => Promise<void>;
   onAskFollowUp: (message: string) => Promise<void>;
+  onFocusAnswer: () => void;
   formatTime: (iso: string) => string;
   formatCitation: (citation: AdviceCitation) => string;
   messageEndRef: React.RefObject<HTMLDivElement>;
@@ -95,7 +109,7 @@ function renderMediaAnalysis(message: BrainMessage) {
             <div key={`${message.id}-${issue.name}-${issue.category}`} className="grik-media-issue-card">
               <div className="grik-media-issue-head">
                 <strong>{issue.name}</strong>
-                <span className="grik-citation-pill">{Math.round(issue.confidence * 100)}%</span>
+                <span className="grik-citation-pill">{formatConfidencePct(issue.confidence)}%</span>
               </div>
               {issue.category ? <div className="grik-media-issue-category">{issue.category}</div> : null}
               {issue.evidence ? <p className="muted">{issue.evidence}</p> : null}
@@ -137,7 +151,7 @@ function renderMediaAnalysis(message: BrainMessage) {
           {analysis.model_runs.slice(0, 4).map((run) => (
             <div key={`${message.id}-${run.model}`} className="grik-media-model-card">
               <div className="label">{run.model}</div>
-              <p className="muted">Score: {Math.round(run.quality_score * 100)}%</p>
+              <p className="muted">Score: {formatConfidencePct(run.quality_score)}%</p>
             </div>
           ))}
         </div>
@@ -160,6 +174,7 @@ export function FarmerBrainMessageStream({
   activeConversationMeta,
   activeMessages,
   attachedLabel,
+  sendingStatusText,
   deepAnalysis,
   sending,
   mediaBusy,
@@ -171,6 +186,7 @@ export function FarmerBrainMessageStream({
   onPlayAssistantAudio,
   onCopyMessage,
   onAskFollowUp,
+  onFocusAnswer,
   formatTime,
   formatCitation,
   messageEndRef,
@@ -204,7 +220,7 @@ export function FarmerBrainMessageStream({
                 </span>
                 <div className="grik-inline-actions">
                   {message.role === "assistant" && message.source_confidence != null ? (
-                    <span className="grik-confidence">{Math.round(message.source_confidence * 100)}% grounded</span>
+                    <span className="grik-confidence">{formatConfidencePct(message.source_confidence)}% grounded</span>
                   ) : null}
                   {message.role === "assistant" ? (
                     <>
@@ -232,6 +248,23 @@ export function FarmerBrainMessageStream({
                   </button>
                 </div>
               </div>
+
+              {message.attachments && message.attachments.length > 0 ? (
+                <div className="grik-message-attachments">
+                  {message.attachments.map((attachment, index) => (
+                    <a
+                      key={`${message.id}-attachment-${index}`}
+                      href={attachment.url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="grik-message-attachment"
+                      title={`Open ${attachment.name} full size`}
+                    >
+                      <img src={attachment.url} alt={attachment.name} />
+                    </a>
+                  ))}
+                </div>
+              ) : null}
 
               <div className="grik-markdown">
                 <ReactMarkdown remarkPlugins={[remarkGfm]}>{message.message}</ReactMarkdown>
@@ -263,17 +296,23 @@ export function FarmerBrainMessageStream({
 
               {message.follow_ups && message.follow_ups.length > 0 ? (
                 <div className="grik-followups-row">
-                  {message.follow_ups.map((followUp) => (
-                    <button
-                      key={`${message.id}-${followUp}`}
-                      type="button"
-                      className="btn ghost small"
-                      disabled={sending || mediaBusy || sttBusy || isRecording || realtimeListening}
-                      onClick={() => void onAskFollowUp(followUp)}
-                    >
-                      {followUp}
-                    </button>
-                  ))}
+                  {message.follow_ups.map((followUp) => {
+                    const isClarifyingQuestion = followUp.trim().endsWith("?");
+                    return (
+                      <button
+                        key={`${message.id}-${followUp}`}
+                        type="button"
+                        className={`btn ghost small grik-followup-chip ${isClarifyingQuestion ? "is-question" : ""}`}
+                        disabled={sending || mediaBusy || sttBusy || isRecording || realtimeListening}
+                        title={isClarifyingQuestion ? "Tap to answer in the message box" : "Tap to ask GRIK this"}
+                        onClick={() => (isClarifyingQuestion ? onFocusAnswer() : void onAskFollowUp(followUp))}
+                      >
+                        {isClarifyingQuestion ? <Icon name="check-circle" size={12} /> : null}
+                        {followUp}
+                        {isClarifyingQuestion ? <span className="grik-followup-hint">(tap to answer)</span> : null}
+                      </button>
+                    );
+                  })}
                 </div>
               ) : null}
             </article>
@@ -281,11 +320,18 @@ export function FarmerBrainMessageStream({
         )}
 
         {sending ? (
-          <article className="chat-bubble assistant">
+          <article className="chat-bubble assistant grik-thinking-bubble">
             <div className="grik-message-meta">
               <span>GRIK | now</span>
             </div>
-            <p>Reviewing your question and preparing the next action plan.</p>
+            <div className="grik-thinking-row">
+              <span className="grik-thinking-dots" aria-hidden="true">
+                <span />
+                <span />
+                <span />
+              </span>
+              <p>{sendingStatusText || "Reviewing your question..."}</p>
+            </div>
           </article>
         ) : null}
         <div ref={messageEndRef} />
