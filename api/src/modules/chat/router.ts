@@ -22,19 +22,102 @@ Always respond with a single JSON object, no prose outside it, matching exactly:
   "follow_ups": string[]            // 0-3 short suggested follow-up questions
 }`;
 
+function titleFromMessage(message: string): string {
+  const cleaned = message.trim().replace(/\s+/g, " ");
+  if (!cleaned) return "New conversation";
+  return cleaned.length > 60 ? `${cleaned.slice(0, 60)}...` : cleaned;
+}
+
+/** Ensures the given conversation id belongs to this user, or creates a fresh one seeded from the first message. */
+async function resolveConversationId(userId: string, conversationId: string | undefined, seedMessage: string): Promise<string> {
+  if (conversationId) {
+    const existing = await prisma.chatConversation.findFirst({ where: { id: conversationId, userId }, select: { id: true } });
+    if (!existing) throw badRequest("Conversation not found.");
+    return existing.id;
+  }
+  const created = await prisma.chatConversation.create({
+    data: { userId, title: titleFromMessage(seedMessage) },
+    select: { id: true },
+  });
+  return created.id;
+}
+
+router.get(
+  "/conversations",
+  asyncHandler(async (req, res) => {
+    const conversations = await prisma.chatConversation.findMany({
+      where: { userId: req.userId! },
+      orderBy: { updatedAt: "desc" },
+      include: {
+        messages: { orderBy: { createdAt: "desc" }, take: 1 },
+        _count: { select: { messages: true } },
+      },
+    });
+    res.json({
+      items: conversations.map((c) => ({
+        id: c.id,
+        title: c.title,
+        created_at: c.createdAt.toISOString(),
+        updated_at: c.updatedAt.toISOString(),
+        message_count: c._count.messages,
+        last_message: c.messages[0]?.message ?? null,
+      })),
+    });
+  })
+);
+
+const createConversationSchema = z.object({
+  title: z.string().optional(),
+});
+
+router.post(
+  "/conversations",
+  asyncHandler(async (req, res) => {
+    const body = createConversationSchema.parse(req.body ?? {});
+    const conversation = await prisma.chatConversation.create({
+      data: { userId: req.userId!, title: body.title?.trim() || "New conversation" },
+    });
+    res.json({
+      id: conversation.id,
+      title: conversation.title,
+      created_at: conversation.createdAt.toISOString(),
+      updated_at: conversation.updatedAt.toISOString(),
+      message_count: 0,
+      last_message: null,
+    });
+  })
+);
+
+router.delete(
+  "/conversations/:id",
+  asyncHandler(async (req, res) => {
+    const existing = await prisma.chatConversation.findFirst({ where: { id: req.params.id, userId: req.userId! }, select: { id: true } });
+    if (!existing) throw badRequest("Conversation not found.");
+    await prisma.chatConversation.delete({ where: { id: existing.id } });
+    res.json({ ok: true });
+  })
+);
+
 router.get(
   "/history",
   asyncHandler(async (req, res) => {
     const limit = Math.min(Number(req.query.limit ?? 30), 200);
+    const conversationId = typeof req.query.conversation_id === "string" ? req.query.conversation_id : undefined;
     const items = await prisma.chatMessage.findMany({
-      where: { userId: req.userId! },
+      where: { userId: req.userId!, ...(conversationId ? { conversationId } : {}) },
       orderBy: { createdAt: "desc" },
       take: limit,
     });
     res.json({
       items: items
         .reverse()
-        .map((m) => ({ id: m.id, role: m.role, message: m.message, created_at: m.createdAt.toISOString() })),
+        .map((m) => ({
+          id: m.id,
+          role: m.role,
+          message: m.message,
+          created_at: m.createdAt.toISOString(),
+          conversation_id: m.conversationId,
+        })),
     });
   })
 );
@@ -43,6 +126,7 @@ const askSchema = z.object({
   message: z.string().min(1),
   locale_hint: z.string().optional(),
   location_hint: z.string().optional(),
+  conversation_id: z.string().optional(),
 });
 
 router.post(
@@ -51,7 +135,10 @@ router.post(
     const body = askSchema.parse(req.body);
     if (!aiConfigured()) throw badRequest("Chat AI is not configured on the server yet.");
 
-    await prisma.chatMessage.create({ data: { userId: req.userId!, role: "user", message: body.message } });
+    const conversationId = await resolveConversationId(req.userId!, body.conversation_id, body.message);
+
+    await prisma.chatMessage.create({ data: { userId: req.userId!, conversationId, role: "user", message: body.message } });
+    await prisma.chatConversation.update({ where: { id: conversationId }, data: { updatedAt: new Date() } });
 
     const userPrompt = [
       body.locale_hint ? `Locale hint: ${body.locale_hint}` : null,
@@ -77,9 +164,9 @@ router.post(
     const language = (parsed?.language as string) || body.locale_hint || "en";
     const followUps = Array.isArray(parsed?.follow_ups) ? (parsed!.follow_ups as string[]) : [];
 
-    await prisma.chatMessage.create({ data: { userId: req.userId!, role: "assistant", message: reply } });
+    await prisma.chatMessage.create({ data: { userId: req.userId!, conversationId, role: "assistant", message: reply } });
 
-    res.json({ reply, language, follow_ups: followUps });
+    res.json({ reply, language, follow_ups: followUps, conversation_id: conversationId });
   })
 );
 
@@ -102,6 +189,7 @@ const multimodalSchema = z.object({
   crop_hint: z.string().optional(),
   model_preference: z.string().optional(),
   deep_analysis: z.string().optional(),
+  conversation_id: z.string().optional(),
 });
 
 router.post(
@@ -113,7 +201,10 @@ router.post(
     if (files.length === 0) throw badRequest("At least one image is required for vision analysis.");
     if (!aiConfigured()) throw badRequest("Vision AI is not configured on the server yet.");
 
-    await prisma.chatMessage.create({ data: { userId: req.userId!, role: "user", message: body.message } });
+    const conversationId = await resolveConversationId(req.userId!, body.conversation_id, body.message);
+
+    await prisma.chatMessage.create({ data: { userId: req.userId!, conversationId, role: "user", message: body.message } });
+    await prisma.chatConversation.update({ where: { id: conversationId }, data: { updatedAt: new Date() } });
 
     const imageContents = files.slice(0, 6).map((file) => {
       const base64 = fs.readFileSync(file.path).toString("base64");
@@ -200,13 +291,14 @@ router.post(
     }
     const reply = replyParts.join("\n\n");
 
-    await prisma.chatMessage.create({ data: { userId: req.userId!, role: "assistant", message: reply } });
+    await prisma.chatMessage.create({ data: { userId: req.userId!, conversationId, role: "assistant", message: reply } });
 
     res.json({
       reply,
       language: body.locale_hint || "en",
       follow_ups: followUps,
       media_analysis: mediaAnalysis,
+      conversation_id: conversationId,
     });
   })
 );

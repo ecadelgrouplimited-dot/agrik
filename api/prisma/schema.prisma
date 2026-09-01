@@ -37,6 +37,7 @@ model User {
   subscriptions Subscription[]
   platformServices PlatformService[]
   chatMessages ChatMessage[]
+  chatConversations ChatConversation[]
   emailVerifications EmailVerification[]
   passwordResets     PasswordReset[]
 
@@ -343,15 +344,32 @@ model PlatformService {
   @@map("platform_services")
 }
 
-model ChatMessage {
-  id        Int      @id @default(autoincrement())
+model ChatConversation {
+  id        String   @id @default(uuid())
   userId    String   @map("user_id")
-  role      String
-  message   String
+  title     String   @default("New conversation")
   createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user     User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  messages ChatMessage[]
 
   @@index([userId])
+  @@map("chat_conversations")
+}
+
+model ChatMessage {
+  id             Int      @id @default(autoincrement())
+  userId         String   @map("user_id")
+  conversationId String?  @map("conversation_id")
+  role           String
+  message        String
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  user         User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  conversation ChatConversation? @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([conversationId])
   @@map("chat_messages")
 }

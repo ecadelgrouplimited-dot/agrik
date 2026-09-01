@@ -685,8 +685,28 @@ export const api = {
         updated_at?: string | null;
       }[]
     >(`/profile/platform-services${query}`),
-  chatHistory: (limit = 30) => request<{ items: { id: number; role: string; message: string; created_at: string }[] }>(`/chat/history?limit=${limit}`),
-  chatAsk: (payload: { message: string; locale_hint?: string; location_hint?: string }) =>
+  chatConversations: () =>
+    request<{
+      items: {
+        id: string;
+        title: string;
+        created_at: string;
+        updated_at: string;
+        message_count: number;
+        last_message: string | null;
+      }[];
+    }>("/chat/conversations"),
+  chatCreateConversation: (title?: string) =>
+    request<{ id: string; title: string; created_at: string; updated_at: string; message_count: number; last_message: string | null }>(
+      "/chat/conversations",
+      { method: "POST", body: JSON.stringify({ title }) }
+    ),
+  chatDeleteConversation: (id: string) => request<{ ok: boolean }>(`/chat/conversations/${id}`, { method: "DELETE" }),
+  chatHistory: (limit = 30, conversationId?: string) =>
+    request<{ items: { id: number; role: string; message: string; created_at: string; conversation_id?: string | null }[] }>(
+      `/chat/history?limit=${limit}${conversationId ? `&conversation_id=${conversationId}` : ""}`
+    ),
+  chatAsk: (payload: { message: string; locale_hint?: string; location_hint?: string; conversation_id?: string }) =>
     request<{
       reply: string;
       language: string;
@@ -696,6 +716,7 @@ export const api = {
       citation_text?: string;
       follow_ups?: string[];
       media_analysis?: VisionAnalysis;
+      conversation_id: string;
     }>(
       "/chat/ask",
       {
@@ -711,6 +732,7 @@ export const api = {
     crop_hint?: string;
     model_preference?: string;
     deep_analysis?: boolean;
+    conversation_id?: string;
     files: File[];
   }) => {
     const formData = new FormData();
@@ -727,6 +749,9 @@ export const api = {
     if (payload.model_preference) {
       formData.append("model_preference", payload.model_preference);
     }
+    if (payload.conversation_id) {
+      formData.append("conversation_id", payload.conversation_id);
+    }
     formData.append("deep_analysis", payload.deep_analysis ? "true" : "false");
     for (const file of payload.files) {
       formData.append("files", file, file.name);
@@ -741,6 +766,7 @@ export const api = {
       citation_text?: string;
       follow_ups?: string[];
       media_analysis?: VisionAnalysis;
+      conversation_id: string;
     }>("/chat/ask-multimodal", formData, CHAT_REQUEST_TIMEOUT_MS, getToken());
   },
   chatTranscribeAudio: (payload: { file: File; locale_hint?: string }) => {

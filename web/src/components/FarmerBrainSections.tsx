@@ -39,6 +39,7 @@ type MessageStreamProps = {
   activeConversationMeta: string;
   activeMessages: BrainMessage[];
   attachedLabel: string;
+  messagesLoading: boolean;
   sendingStatusText?: string;
   deepAnalysis: boolean;
   sending: boolean;
@@ -174,6 +175,7 @@ export function FarmerBrainMessageStream({
   activeConversationMeta,
   activeMessages,
   attachedLabel,
+  messagesLoading,
   sendingStatusText,
   deepAnalysis,
   sending,
@@ -206,7 +208,11 @@ export function FarmerBrainMessageStream({
       </div>
 
       <div className="chat-messages grik-chat-stream">
-        {activeMessages.length === 0 ? (
+        {messagesLoading ? (
+          <div className="grik-empty-state">
+            <h4>Loading this conversation...</h4>
+          </div>
+        ) : activeMessages.length === 0 ? (
           <div className="grik-empty-state">
             <h4>Start with a clear question</h4>
             <p className="muted">Try a crop symptom, a weather timing decision, or a market planning question.</p>

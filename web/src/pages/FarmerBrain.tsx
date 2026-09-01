@@ -31,6 +31,7 @@ type Conversation = {
   title: string;
   created_at: string;
   messages: ChatMessage[];
+  messageCount?: number;
 };
 
 type ProfileDetails = {
@@ -80,7 +81,6 @@ const starterPrompts = [
   "What should I monitor before harvest this week?",
 ];
 
-const STORAGE_KEY_PREFIX = "agrik_grik_conversations";
 const MAX_MEDIA_FILES = 6;
 const VIDEO_FRAME_COUNT = 3;
 const MAX_VIDEO_SECONDS = 5;
@@ -308,13 +308,18 @@ function selectBrowserSpeechVoice(voices: SpeechSynthesisVoice[], lang: string):
   return fallback ?? voices[0] ?? null;
 }
 
+/** A "local-" id marks a conversation that only exists in the browser until its first message is sent and the server assigns a real id. */
 function createConversation(title = "New conversation"): Conversation {
   return {
-    id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    id: `local-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
     title,
     created_at: new Date().toISOString(),
     messages: [],
   };
+}
+
+function isLocalConversationId(id: string): boolean {
+  return id.startsWith("local-");
 }
 
 function normalizeChatMessage(item: { id: number; role: string; message: string; created_at: string }): ChatMessage {
@@ -539,6 +544,8 @@ export default function FarmerBrain() {
   const realtimeSpeechRecognitionEnabledRef = useRef(false);
   const browserSpeechUtteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
   const voiceProfileHydratedRef = useRef(false);
+  const loadedConversationIdsRef = useRef(new Set<string>());
+  const [messagesLoading, setMessagesLoading] = useState(false);
 
   const activeConversation = useMemo(
     () => conversations.find((item) => item.id === activeConversationId) ?? conversations[0] ?? null,
@@ -565,19 +572,66 @@ export default function FarmerBrain() {
 
   useEffect(() => {
     if (!user?.id) return;
-    const storageKey = `${STORAGE_KEY_PREFIX}_${user.id}`;
-    const raw = localStorage.getItem(storageKey);
-    if (!raw) return;
-    try {
-      const parsed = JSON.parse(raw) as { conversations?: Conversation[]; activeConversationId?: string };
-      if (parsed?.conversations && parsed.conversations.length > 0) {
-        setConversations(parsed.conversations);
-        setActiveConversationId(parsed.activeConversationId || parsed.conversations[0].id);
-      }
-    } catch {
-      // ignore invalid local data
-    }
+    let active = true;
+    api
+      .chatConversations()
+      .then((res) => {
+        if (!active) return;
+        const serverList: Conversation[] = (res.items ?? []).map((item) => ({
+          id: item.id,
+          title: item.title,
+          created_at: item.created_at,
+          messages: [],
+          messageCount: item.message_count,
+        }));
+        // Merge rather than replace: the user may have already clicked "New" (a
+        // local-only draft) or already sent a message (adopting a real id this
+        // stale snapshot doesn't know about yet) while this request was in
+        // flight. Blindly overwriting would silently discard that state.
+        setConversations((prev) => {
+          const serverIds = new Set(serverList.map((c) => c.id));
+          const keepFromPrev = prev.filter((c) => !serverIds.has(c.id));
+          const merged = [...keepFromPrev, ...serverList];
+          return merged.length > 0 ? merged : [createConversation()];
+        });
+        setActiveConversationId((current) => current || serverList[0]?.id || "");
+      })
+      .catch(() => {
+        if (!active) return;
+        setConversations((prev) => (prev.length > 0 ? prev : [createConversation()]));
+      });
+    return () => {
+      active = false;
+    };
   }, [user?.id]);
+
+  useEffect(() => {
+    if (!activeConversationId || isLocalConversationId(activeConversationId)) return;
+    if (loadedConversationIdsRef.current.has(activeConversationId)) return;
+    loadedConversationIdsRef.current.add(activeConversationId);
+    let active = true;
+    setMessagesLoading(true);
+    api
+      .chatHistory(200, activeConversationId)
+      .then((res) => {
+        if (!active) return;
+        const historyMessages = (res.items ?? []).map(normalizeChatMessage);
+        setConversations((prev) =>
+          prev.map((conversation) =>
+            conversation.id === activeConversationId ? { ...conversation, messages: historyMessages } : conversation
+          )
+        );
+      })
+      .catch(() => {
+        loadedConversationIdsRef.current.delete(activeConversationId);
+      })
+      .finally(() => {
+        if (active) setMessagesLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [activeConversationId]);
 
   useEffect(() => {
     if (!user?.id) {
@@ -591,12 +645,6 @@ export default function FarmerBrain() {
     }
     voiceProfileHydratedRef.current = true;
   }, [user?.id]);
-
-  useEffect(() => {
-    if (!user?.id || conversations.length === 0) return;
-    const storageKey = `${STORAGE_KEY_PREFIX}_${user.id}`;
-    localStorage.setItem(storageKey, JSON.stringify({ conversations, activeConversationId }));
-  }, [activeConversationId, conversations, user?.id]);
 
   useEffect(() => {
     if (!user?.id || !voiceProfileHydratedRef.current) return;
@@ -613,28 +661,6 @@ export default function FarmerBrain() {
     return () => clearInterval(interval);
   }, [sending]);
 
-  useEffect(() => {
-    if (conversations.length === 0) {
-      api
-        .chatHistory(80)
-        .then((res) => {
-          const historyMessages = (res.items ?? []).map(normalizeChatMessage);
-          const initial = createConversation();
-          const conversation: Conversation = {
-            ...initial,
-            title: historyMessages.length ? inferConversationTitle(historyMessages) : initial.title,
-            messages: historyMessages,
-          };
-          setConversations([conversation]);
-          setActiveConversationId(conversation.id);
-        })
-        .catch(() => {
-          const emptyConversation = createConversation();
-          setConversations([emptyConversation]);
-          setActiveConversationId(emptyConversation.id);
-        });
-    }
-  }, [conversations.length]);
 
   useEffect(() => {
     let active = true;
@@ -2112,6 +2138,7 @@ export default function FarmerBrain() {
     if ((!effectiveMessage && !hasMedia) || (!bypassGuard && (sending || mediaBusy || sttBusy || isRecording))) return;
 
     const conversationId = ensureActiveConversation();
+    const wasLocalDraft = isLocalConversationId(conversationId);
     const tempId = Date.now();
     const now = new Date().toISOString();
     const attachmentLabel = options?.attachmentLabel || `${files.length} file(s)`;
@@ -2152,12 +2179,14 @@ export default function FarmerBrain() {
             crop_hint: selectedCrop || undefined,
             model_preference: selectedModel || "auto",
             deep_analysis: useDeepAnalysis,
+            conversation_id: wasLocalDraft ? undefined : conversationId,
             files,
           })
         : await api.chatAsk({
             message: effectiveMessage,
             locale_hint: localeHint,
             location_hint: locationHint,
+            conversation_id: wasLocalDraft ? undefined : conversationId,
           });
       setConversationMessages(conversationId, (messages) => [
         ...messages,
@@ -2174,6 +2203,14 @@ export default function FarmerBrain() {
           media_analysis: response.media_analysis,
         },
       ]);
+      if (wasLocalDraft && response.conversation_id && response.conversation_id !== conversationId) {
+        const serverConversationId = response.conversation_id;
+        loadedConversationIdsRef.current.add(serverConversationId);
+        setConversations((prev) =>
+          prev.map((conversation) => (conversation.id === conversationId ? { ...conversation, id: serverConversationId } : conversation))
+        );
+        setActiveConversationId((current) => (current === conversationId ? serverConversationId : current));
+      }
       if (hasMedia) {
         setSelectedImages([]);
         setVideoFrames([]);
@@ -2492,7 +2529,7 @@ export default function FarmerBrain() {
               >
                 <span className="grik-conversation-title">{conversation.title}</span>
                 <span className="grik-conversation-meta">
-                  {formatDate(conversation.created_at)} | {conversation.messages.length} messages
+                  {formatDate(conversation.created_at)} | {Math.max(conversation.messages.length, conversation.messageCount ?? 0)} messages
                 </span>
               </button>
             ))}
@@ -2507,6 +2544,7 @@ export default function FarmerBrain() {
                 : "Start with a crop symptom or farm decision question."
             }
             activeMessages={activeMessages}
+            messagesLoading={messagesLoading}
             attachedLabel={
               attachedFileCount > 0
                 ? `Attaching: ${mediaAttachmentLabel}`
