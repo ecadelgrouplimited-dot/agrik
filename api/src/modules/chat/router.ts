@@ -29,6 +29,33 @@ async function buildHistoryContext(conversationId: string): Promise<{ role: "use
     }));
 }
 
+/** Recent real market prices for this farmer's own tracked crops, so advice reflects actual local prices instead of general knowledge. */
+async function buildMarketContext(userId: string): Promise<string | null> {
+  const identity = await prisma.identity.findUnique({ where: { userId }, select: { crops: true, district: true } });
+  const crops = (identity?.crops ?? []).filter(Boolean);
+  if (crops.length === 0) return null;
+
+  const recent = await prisma.marketPrice.findMany({
+    where: { crop: { in: crops } },
+    orderBy: { capturedAt: "desc" },
+    take: 50,
+  });
+  if (recent.length === 0) return null;
+
+  const latestByCrop = new Map<string, (typeof recent)[number]>();
+  for (const row of recent) {
+    if (!latestByCrop.has(row.crop)) latestByCrop.set(row.crop, row);
+  }
+
+  const lines = Array.from(latestByCrop.values()).map((row) => {
+    const place = row.district || row.market || "an unspecified market";
+    const ageDays = Math.max(0, Math.round((Date.now() - row.capturedAt.getTime()) / 86_400_000));
+    return `${row.crop}: ${row.price} ${row.currency} in ${place} (${ageDays === 0 ? "today" : `${ageDays}d ago`}${row.source ? `, source: ${row.source}` : ""})`;
+  });
+
+  return `Real recent market prices for this farmer's tracked crops -- use these instead of guessing at prices:\n${lines.join("\n")}`;
+}
+
 const router = Router();
 router.use(requireAuth);
 
@@ -190,7 +217,10 @@ router.post(
     if (!aiConfigured()) throw badRequest("Chat AI is not configured on the server yet.");
 
     const conversationId = await resolveConversationId(req.userId!, body.conversation_id, body.message);
-    const historyContext = await buildHistoryContext(conversationId);
+    const [historyContext, marketContext] = await Promise.all([
+      buildHistoryContext(conversationId),
+      buildMarketContext(req.userId!),
+    ]);
 
     await prisma.chatMessage.create({ data: { userId: req.userId!, conversationId, role: "user", message: body.message } });
     await prisma.chatConversation.update({ where: { id: conversationId }, data: { updatedAt: new Date() } });
@@ -198,6 +228,7 @@ router.post(
     const userPrompt = [
       body.locale_hint ? `Locale hint: ${body.locale_hint}` : null,
       body.location_hint ? `Location hint: ${body.location_hint}` : null,
+      marketContext,
       `Message: ${body.message}`,
     ]
       .filter(Boolean)
@@ -266,7 +297,10 @@ router.post(
     if (!aiConfigured()) throw badRequest("Vision AI is not configured on the server yet.");
 
     const conversationId = await resolveConversationId(req.userId!, body.conversation_id, body.message);
-    const historyContext = await buildHistoryContext(conversationId);
+    const [historyContext, marketContext] = await Promise.all([
+      buildHistoryContext(conversationId),
+      buildMarketContext(req.userId!),
+    ]);
 
     // Keep uploaded photos (served from /uploads) instead of deleting them after
     // analysis, so the attachment thumbnail is still there after a page reload.
@@ -297,6 +331,7 @@ router.post(
       body.locale_hint ? `Locale hint: ${body.locale_hint}` : null,
       body.location_hint ? `Location hint: ${body.location_hint}` : null,
       body.crop_hint ? `Crop hint: ${body.crop_hint}` : null,
+      marketContext,
       `Deep analysis requested: ${body.deep_analysis === "true"}`,
       `Farmer message: ${body.message}`,
     ]

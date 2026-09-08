@@ -11,6 +11,7 @@ export type AuthUser = {
   verification_status?: string;
   created_at?: string;
   full_name?: string | null;
+  photo_url?: string | null;
 };
 
 type AuthActionResult = {
@@ -30,6 +31,7 @@ type AuthState = {
   requestPasswordReset: (email: string) => Promise<AuthActionResult>;
   resetPassword: (email: string, code: string, password: string) => Promise<void>;
   logout: () => void;
+  updateUser: (patch: Partial<AuthUser>) => void;
 };
 
 const AuthContext = createContext<AuthState | undefined>(undefined);
@@ -111,9 +113,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(null);
   }, []);
 
+  const updateUser = useCallback((patch: Partial<AuthUser>) => {
+    setUser((current) => (current ? { ...current, ...patch } : current));
+  }, []);
+
   const value = useMemo(
-    () => ({ user, loading, error, login, verify, register, resendVerificationCode, requestPasswordReset, resetPassword, logout }),
-    [user, loading, error, login, verify, register, resendVerificationCode, requestPasswordReset, resetPassword, logout]
+    () => ({ user, loading, error, login, verify, register, resendVerificationCode, requestPasswordReset, resetPassword, logout, updateUser }),
+    [user, loading, error, login, verify, register, resendVerificationCode, requestPasswordReset, resetPassword, logout, updateUser]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

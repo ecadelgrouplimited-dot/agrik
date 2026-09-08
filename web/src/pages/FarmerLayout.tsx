@@ -1,8 +1,9 @@
-import { NavLink, Outlet, useLocation } from "react-router-dom";
+import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "../state/auth";
 import { Icon } from "../components/Visuals";
 import BrandLogo from "../components/BrandLogo";
+import Avatar from "../components/Avatar";
 import MobileFabMenu from "../components/MobileFabMenu";
 
 const navItems = [
@@ -21,6 +22,7 @@ const SIDEBAR_COLLAPSED_KEY = "agrik_farmer_sidebar_collapsed";
 
 export default function FarmerLayout() {
   const { user, logout } = useAuth();
+  const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === "true");
   const location = useLocation();
@@ -83,6 +85,17 @@ export default function FarmerLayout() {
       <section className="farmer-main">
         <header className="farmer-topbar">
           <div className="dashboard-topbar-main">
+            {location.pathname !== "/dashboard" ? (
+              <button
+                className="farmer-back-btn"
+                type="button"
+                onClick={() => navigate(-1)}
+                title="Go back"
+                aria-label="Go back to the previous page"
+              >
+                <Icon name="chevron" size={16} />
+              </button>
+            ) : null}
             <button className="farmer-menu-toggle" type="button" onClick={() => setMenuOpen((prev) => !prev)}>
               Menu
             </button>
@@ -101,8 +114,11 @@ export default function FarmerLayout() {
               </NavLink>
             </div>
             <div className="farmer-account-pill">
-              <div className="farmer-account-name">{user?.full_name || user?.phone || "Farmer"}</div>
-              <div className="farmer-account-role">{user?.role?.replace(/_/g, " ") ?? "farmer"}</div>
+              <Avatar name={user?.full_name || user?.phone} photoUrl={user?.photo_url} size={32} />
+              <div>
+                <div className="farmer-account-name">{user?.full_name || user?.phone || "Farmer"}</div>
+                <div className="farmer-account-role">{user?.role?.replace(/_/g, " ") ?? "farmer"}</div>
+              </div>
             </div>
             <button className="btn ghost small" type="button" onClick={logout}>
               Sign out

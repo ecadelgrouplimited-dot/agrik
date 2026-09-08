@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "../state/auth";
 import { Icon } from "../components/Visuals";
 import BrandLogo from "../components/BrandLogo";
+import Avatar from "../components/Avatar";
 import MobileFabMenu from "../components/MobileFabMenu";
 
 const navItems = [
@@ -67,8 +68,11 @@ export default function ProviderLayout() {
           </div>
           <div className="farmer-topbar-actions">
             <div className="farmer-account-pill">
-              <div className="farmer-account-name">{user?.full_name || user?.phone || "Provider"}</div>
-              <div className="farmer-account-role">{user?.role?.replace(/_/g, " ") ?? "service provider"}</div>
+              <Avatar name={user?.full_name || user?.phone} photoUrl={user?.photo_url} size={32} />
+              <div>
+                <div className="farmer-account-name">{user?.full_name || user?.phone || "Provider"}</div>
+                <div className="farmer-account-role">{user?.role?.replace(/_/g, " ") ?? "service provider"}</div>
+              </div>
             </div>
             <button className="btn ghost small" type="button" onClick={logout}>
               Sign out

@@ -4,10 +4,48 @@ import type { Prisma } from "@prisma/client";
 import { prisma } from "../../lib/prisma.js";
 import { asyncHandler } from "../../middleware/errorHandler.js";
 import { requireAuth } from "../../middleware/auth.js";
-import { notFound } from "../../lib/http-error.js";
+import { upload, publicUrlFor } from "../../middleware/upload.js";
+import { badRequest, notFound } from "../../lib/http-error.js";
 
 const router = Router();
 router.use(requireAuth);
+
+/**
+ * Grows the real parish suggestion pool from what farmers actually type for their own farms,
+ * since no public dataset covers Uganda at parish level. Best-effort: never blocks the save.
+ */
+async function learnParishesFromFarmUnits(soilProfile: Record<string, unknown> | undefined): Promise<void> {
+  const farmUnits = Array.isArray(soilProfile?.farm_units) ? (soilProfile!.farm_units as unknown[]) : [];
+  const pairs = new Map<string, { district: string; parish: string }>();
+  for (const unit of farmUnits) {
+    if (!unit || typeof unit !== "object") continue;
+    const district = (unit as Record<string, unknown>).district;
+    const parish = (unit as Record<string, unknown>).parish;
+    if (typeof district !== "string" || typeof parish !== "string") continue;
+    const cleanDistrict = district.trim();
+    const cleanParish = parish.trim();
+    if (!cleanDistrict || !cleanParish) continue;
+    pairs.set(`${cleanDistrict.toLowerCase()}|${cleanParish.toLowerCase()}`, { district: cleanDistrict, parish: cleanParish });
+  }
+  if (pairs.size === 0) return;
+
+  try {
+    for (const { district, parish } of pairs.values()) {
+      const match = await prisma.district.findFirst({
+        where: { name: { equals: district, mode: "insensitive" } },
+        select: { id: true },
+      });
+      if (!match) continue;
+      await prisma.parish.upsert({
+        where: { districtId_name: { districtId: match.id, name: parish } },
+        update: {},
+        create: { districtId: match.id, name: parish },
+      });
+    }
+  } catch {
+    // Best-effort only -- a farm save must never fail because of this.
+  }
+}
 
 function toSettingsOut(settings: {
   userId: string;
@@ -126,11 +164,30 @@ router.get(
             organization_name: identity.organizationName,
             service_categories: identity.serviceCategories,
             focus_crops: identity.focusCrops,
+            photo_url: identity.photoUrl,
             onboarding_stage: identity.onboardingStage,
             updated_at: identity.updatedAt.toISOString(),
           }
         : null,
     });
+  })
+);
+
+router.post(
+  "/photo",
+  upload.single("photo"),
+  asyncHandler(async (req, res) => {
+    const file = req.file;
+    if (!file) throw badRequest("A photo file is required.");
+    if (!file.mimetype.startsWith("image/")) throw badRequest("The uploaded file must be an image.");
+
+    const photoUrl = publicUrlFor(file.filename);
+    const identity = await prisma.identity.update({
+      where: { userId: req.userId! },
+      data: { photoUrl },
+    });
+
+    res.json({ photo_url: identity.photoUrl });
   })
 );
 
@@ -180,6 +237,7 @@ router.put(
         },
         create: { farmerId: req.userId! },
       });
+      await learnParishesFromFarmUnits(body.farm.soil_profile);
     }
 
     res.json({ status: "updated" });

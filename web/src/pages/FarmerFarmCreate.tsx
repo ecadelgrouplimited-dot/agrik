@@ -173,6 +173,11 @@ export default function FarmerFarmCreate() {
             />
           </label>
         </div>
+
+        <button className="btn farm-create-bottom-save" type="button" onClick={handleSave} disabled={saving}>
+          <Icon name="send" size={14} />
+          {saving ? "Saving..." : "Save new farm"}
+        </button>
       </section>
     </>
   );

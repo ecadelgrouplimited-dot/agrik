@@ -50,6 +50,7 @@ export type AuthUserOut = {
   verification_status: string;
   created_at: string;
   full_name?: string | null;
+  photo_url?: string | null;
 };
 
 export type AuthRegisterPayload = {
@@ -619,6 +620,7 @@ export const api = {
         organization_name?: string | null;
         service_categories: string[];
         focus_crops: string[];
+        photo_url?: string | null;
         onboarding_stage: string;
         updated_at?: string | null;
       } | null;
@@ -645,6 +647,11 @@ export const api = {
       method: "PUT",
       body: JSON.stringify(payload),
     }),
+  profileUploadPhoto: (file: File) => {
+    const formData = new FormData();
+    formData.append("photo", file, file.name || "photo");
+    return requestMultipartWithToken<{ photo_url: string | null }>("/profile/photo", formData, REQUEST_TIMEOUT_MS, getToken());
+  },
   subscription: () =>
     request<{
       id: number;

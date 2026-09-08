@@ -7,6 +7,7 @@ import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
 import AppLayout from "./pages/Layout";
 import PwaInstallPrompt from "./components/PwaInstallPrompt";
+import { RouteErrorBoundary } from "./components/ErrorBoundary";
 
 const AdminDashboard = lazy(() => import("./pages/AdminDashboard"));
 const AdminLayout = lazy(() => import("./pages/AdminLayout"));
@@ -83,6 +84,7 @@ export default function App() {
     <BrowserRouter>
       <PwaInstallPrompt />
       <Suspense fallback={<RouteFallback />}>
+      <RouteErrorBoundary>
       <Routes>
         <Route path="/admin/login" element={isAdminAuthed ? <Navigate to="/admin" /> : <AdminLogin />} />
         <Route path="/admin" element={isAdminAuthed ? <AdminLayout /> : <Navigate to="/admin/login" />}>
@@ -139,6 +141,7 @@ export default function App() {
         </Route>
         <Route path="*" element={<Navigate to={defaultPath} />} />
       </Routes>
+      </RouteErrorBoundary>
       </Suspense>
     </BrowserRouter>
   );

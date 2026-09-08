@@ -21,7 +21,7 @@ function toAuthUserOut(user: {
   status: string;
   verificationStatus: string;
   createdAt: Date;
-  identity?: { fullName: string } | null;
+  identity?: { fullName: string; photoUrl?: string | null } | null;
 }) {
   return {
     id: user.id,
@@ -32,6 +32,7 @@ function toAuthUserOut(user: {
     verification_status: user.verificationStatus,
     created_at: user.createdAt.toISOString(),
     full_name: user.identity?.fullName ?? null,
+    photo_url: user.identity?.photoUrl ?? null,
   };
 }
 

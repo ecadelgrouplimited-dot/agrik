@@ -53,6 +53,7 @@ model Identity {
   organizationName  String?  @map("organization_name")
   serviceCategories String[] @default([]) @map("service_categories")
   focusCrops        String[] @default([]) @map("focus_crops")
+  photoUrl          String?  @map("photo_url")
   onboardingStage   String   @default("complete") @map("onboarding_stage")
   updatedAt         DateTime @updatedAt @map("updated_at")
 

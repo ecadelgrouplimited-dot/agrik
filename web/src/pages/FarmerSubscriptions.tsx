@@ -11,29 +11,36 @@ type Subscription = {
   provider?: string | null;
 };
 
-const planOptions = [
+// Each tier lists only what it newly unlocks; the displayed "includes" list below is
+// built cumulatively so a higher tier always shows everything the lower tiers include too.
+const planTiers = [
   {
     id: "basic",
     title: "Basic Advisory",
     summary: "SMS and voice guidance for day-to-day farming decisions.",
     bestFor: "Farmers getting started with routine decision support",
-    includes: ["Advisory prompts", "Voice and SMS access", "Starter guidance"],
+    newFeatures: ["Advisory prompts", "Voice and SMS access", "Starter guidance"],
   },
   {
     id: "weather-plus",
     title: "Weather Plus",
-    summary: "Localized weather farming alerts and climate planning support.",
+    summary: "Everything in Basic Advisory, plus localized weather alerts and climate planning support.",
     bestFor: "Farmers who need stronger timing and risk planning",
-    includes: ["Localized weather view", "Climate signals", "Planning support"],
+    newFeatures: ["Localized weather view", "Climate signals", "Planning support"],
   },
   {
     id: "pro-intelligence",
     title: "Pro Intelligence",
-    summary: "AI advisory, pest and disease alerts, and market intelligence bundle.",
+    summary: "Everything in Weather Plus, plus AI advisory, pest and disease alerts, and market intelligence.",
     bestFor: "Farmers running a more active advisory and market workflow",
-    includes: ["GRIK Brain tools", "Market support", "Pest and disease guidance"],
+    newFeatures: ["GRIK Brain tools", "Market support", "Pest and disease guidance"],
   },
 ];
+
+const planOptions = planTiers.map((tier, index) => ({
+  ...tier,
+  includes: planTiers.slice(0, index + 1).flatMap((t) => t.newFeatures),
+}));
 
 export default function FarmerSubscriptions() {
   const [current, setCurrent] = useState<Subscription | null>(null);

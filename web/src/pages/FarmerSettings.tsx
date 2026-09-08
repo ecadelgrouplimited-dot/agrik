@@ -1,7 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ChangeEvent } from "react";
 import { Link } from "react-router-dom";
 import { Icon } from "../components/Visuals";
+import Avatar from "../components/Avatar";
 import { api } from "../lib/api";
+import { useAuth } from "../state/auth";
 
 type StatusMessage = { type: "info" | "error"; message: string };
 
@@ -52,8 +54,10 @@ function parseFarmUnits(soilProfile: Record<string, unknown>): FarmLocation[] {
 }
 
 export default function FarmerSettings() {
+  const { user, updateUser } = useAuth();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [status, setStatus] = useState<StatusMessage | null>(null);
 
   const [farms, setFarms] = useState<FarmLocation[]>([]);
@@ -105,6 +109,27 @@ export default function FarmerSettings() {
 
   const primaryFarm = farms.find((farm) => farm.isPrimary) ?? farms[0] ?? null;
 
+  const handlePhotoSelect = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      setStatus({ type: "error", message: "Please choose an image file." });
+      return;
+    }
+    setUploadingPhoto(true);
+    setStatus(null);
+    try {
+      const result = await api.profileUploadPhoto(file);
+      updateUser({ photo_url: result.photo_url });
+      setStatus({ type: "info", message: "Profile photo updated." });
+    } catch {
+      setStatus({ type: "error", message: "Unable to upload your photo right now." });
+    } finally {
+      setUploadingPhoto(false);
+    }
+  };
+
   if (loading) return <section className="farmer-page">Loading settings...</section>;
 
   return (
@@ -119,6 +144,28 @@ export default function FarmerSettings() {
       </div>
 
       {status ? <p className={`status ${status.type === "error" ? "error" : ""}`}>{status.message}</p> : null}
+
+      <section className="farmer-card">
+        <div className="farmer-card-header">
+          <div className="section-title-with-icon">
+            <span className="section-icon">
+              <Icon name="users" size={18} />
+            </span>
+            <h3>Profile photo</h3>
+          </div>
+        </div>
+        <div className="settings-photo-row">
+          <Avatar name={user?.full_name || user?.phone} photoUrl={user?.photo_url} size={72} />
+          <div>
+            <label className="btn ghost small settings-photo-upload">
+              <Icon name="upload" size={14} />
+              {uploadingPhoto ? "Uploading..." : user?.photo_url ? "Change photo" : "Upload photo"}
+              <input type="file" accept="image/*" onChange={handlePhotoSelect} disabled={uploadingPhoto} />
+            </label>
+            <p className="muted">Shown next to your name across the dashboard.</p>
+          </div>
+        </div>
+      </section>
 
       <section className="farmer-card">
         <div className="farmer-card-header">
