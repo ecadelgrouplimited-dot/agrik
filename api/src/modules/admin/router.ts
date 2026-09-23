@@ -2,9 +2,11 @@ import { Router } from "express";
 import { z } from "zod";
 import type { Prisma } from "@prisma/client";
 import { prisma } from "../../lib/prisma.js";
+import { env } from "../../config/env.js";
+import { sendContactAcknowledgementEmail, sendContactNotificationEmail } from "../../lib/mailer.js";
 import { asyncHandler } from "../../middleware/errorHandler.js";
 import { requireAdminAuth } from "../../middleware/adminAuth.js";
-import { badRequest, conflict, notFound } from "../../lib/http-error.js";
+import { badGateway, badRequest, conflict, notFound } from "../../lib/http-error.js";
 import { listingOut } from "../market/router.js";
 import {
   CROPS,
@@ -88,7 +90,7 @@ async function logActivity(adminId: string, action: string, details: Record<stri
 router.get(
   "/summary",
   asyncHandler(async (_req, res) => {
-    const [usersTotal, usersVerified, listings, offers, services, alerts, prices] = await Promise.all([
+    const [usersTotal, usersVerified, listings, offers, services, alerts, prices, contactsOpen] = await Promise.all([
       prisma.user.count(),
       prisma.user.count({ where: { verificationStatus: "verified" } }),
       prisma.marketListing.count(),
@@ -98,6 +100,8 @@ router.get(
       prisma.servicePlan.count(),
       prisma.marketAlert.count(),
       prisma.marketPrice.count(),
+      // Enquiries nobody has picked up yet.
+      prisma.contactMessage.count({ where: { status: "new" } }),
     ]);
     res.json({
       users_total: usersTotal,
@@ -108,6 +112,7 @@ router.get(
       services,
       alerts,
       prices,
+      contacts_open: contactsOpen,
     });
   })
 );
@@ -619,6 +624,109 @@ router.post(
     });
     await logActivity(_req.adminId!, "services_seeded", { count: created.count }, _req.ip);
     res.json({ created: created.count, skipped: DEFAULT_SERVICE_PLANS.length - created.count });
+  })
+);
+
+function contactOut(row: {
+  id: number;
+  name: string;
+  email: string;
+  phone: string | null;
+  topic: string;
+  message: string;
+  status: string;
+  adminNote: string | null;
+  notified: boolean;
+  acknowledged: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}) {
+  return {
+    id: row.id,
+    name: row.name,
+    email: row.email,
+    phone: row.phone,
+    topic: row.topic,
+    message: row.message,
+    status: row.status,
+    admin_note: row.adminNote,
+    notified: row.notified,
+    acknowledged: row.acknowledged,
+    created_at: row.createdAt.toISOString(),
+    updated_at: row.updatedAt.toISOString(),
+  };
+}
+
+router.get(
+  "/contact",
+  asyncHandler(async (req, res) => {
+    const status = String(req.query.status ?? "").trim();
+    const items = await prisma.contactMessage.findMany({
+      where: status ? { status } : undefined,
+      orderBy: { createdAt: "desc" },
+      take: 500,
+    });
+    res.json({ items: items.map(contactOut) });
+  })
+);
+
+/**
+ * Re-sends the notification and the acknowledgement for one enquiry. Mail can be down
+ * when a message arrives — the message is stored either way — so this is how the queue is
+ * flushed once the mail server is working again.
+ */
+router.post(
+  "/contact/:id/resend",
+  asyncHandler(async (req, res) => {
+    const row = await prisma.contactMessage.findUnique({ where: { id: Number(req.params.id) } });
+    if (!row) throw notFound("Message not found.");
+
+    const enquiry = {
+      id: row.id,
+      name: row.name,
+      email: row.email,
+      phone: row.phone,
+      topic: row.topic,
+      message: row.message,
+    };
+
+    const [notified, acknowledged] = await Promise.all([
+      sendContactNotificationEmail(env.smtp.contactInbox, enquiry)
+        .then(() => true)
+        .catch(() => false),
+      sendContactAcknowledgementEmail(enquiry)
+        .then(() => true)
+        .catch(() => false),
+    ]);
+
+    await prisma.contactMessage.update({ where: { id: row.id }, data: { notified, acknowledged } });
+    await logActivity(req.adminId!, "contact_resent", { contactId: row.id, notified, acknowledged }, req.ip);
+
+    if (!notified && !acknowledged) {
+      throw badGateway("Still unable to send. Check the mail server configuration.");
+    }
+    res.json({ status: "sent", notified, acknowledged });
+  })
+);
+
+const contactUpdateSchema = z.object({
+  status: z.enum(["new", "read", "replied", "closed"]).optional(),
+  admin_note: z.string().max(2000).nullable().optional(),
+});
+
+router.patch(
+  "/contact/:id",
+  asyncHandler(async (req, res) => {
+    const body = contactUpdateSchema.parse(req.body);
+    const row = await prisma.contactMessage.update({
+      where: { id: Number(req.params.id) },
+      data: {
+        status: body.status ?? undefined,
+        adminNote: body.admin_note === undefined ? undefined : body.admin_note,
+      },
+    });
+    await logActivity(req.adminId!, "contact_updated", { contactId: row.id, status: row.status }, req.ip);
+    res.json({ status: "updated" });
   })
 );
 

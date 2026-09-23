@@ -5,6 +5,7 @@ import morgan from "morgan";
 import { env } from "./config/env.js";
 import { errorHandler, notFoundHandler } from "./middleware/errorHandler.js";
 import authRouter from "./modules/auth/router.js";
+import contactRouter from "./modules/contact/router.js";
 import adminAuthRouter from "./modules/admin/auth.js";
 import adminRouter from "./modules/admin/router.js";
 import marketRouter from "./modules/market/router.js";
@@ -36,6 +37,7 @@ export function createApp() {
   app.get("/health", (_req, res) => res.json({ status: "ok" }));
 
   app.use("/auth", authRouter);
+  app.use("/contact", contactRouter);
   app.use("/admin", adminAuthRouter);
   app.use("/admin", adminRouter);
   app.use("/market", marketRouter);

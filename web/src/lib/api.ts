@@ -425,6 +425,19 @@ export const api = {
       }[];
     }>("/reference/uganda/live-map"),
   onboardingOptions: () => request<OnboardingOptionsOut>("/reference/onboarding/options"),
+  contactTopics: () => request<{ topics: string[] }>("/contact/topics"),
+  sendContactMessage: (payload: {
+    name: string;
+    email: string;
+    phone?: string | null;
+    topic: string;
+    message: string;
+    website?: string;
+  }) =>
+    request<{ status: string; reference: number; acknowledged: boolean }>("/contact", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
   adminLogin: (payload: { email: string; password: string }) =>
     request<{
       status: string;
@@ -1040,6 +1053,28 @@ export const api = {
     adminRequest<{ created: number; skipped: number }>(`/admin/services/seed`, {
       method: "POST",
       body: JSON.stringify({}),
+    }),
+  adminContact: (query = "") =>
+    adminRequest<{
+      items: {
+        id: number;
+        name: string;
+        email: string;
+        phone?: string | null;
+        topic: string;
+        message: string;
+        status: string;
+        admin_note?: string | null;
+        notified: boolean;
+        acknowledged: boolean;
+        created_at: string;
+      }[];
+    }>(`/admin/contact${query}`),
+  adminUpdateContact: (id: number, payload: { status?: string; admin_note?: string | null }) =>
+    adminRequest(`/admin/contact/${id}`, { method: "PATCH", body: JSON.stringify(payload) }),
+  adminResendContact: (id: number) =>
+    adminRequest<{ status: string; notified: boolean; acknowledged: boolean }>(`/admin/contact/${id}/resend`, {
+      method: "POST",
     }),
   adminMetadata: () =>
     adminRequest<{

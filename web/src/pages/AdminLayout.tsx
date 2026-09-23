@@ -12,6 +12,7 @@ const navItems = [
   { label: "Prices", path: "/admin/prices", subtitle: "Market pricing", icon: "prices" as const },
   { label: "Alerts", path: "/admin/alerts", subtitle: "Weather & price alerts", icon: "alerts" as const },
   { label: "Services", path: "/admin/services", subtitle: "Platform services", icon: "services" as const },
+  { label: "Messages", path: "/admin/contact", subtitle: "Contact enquiries", icon: "sms" as const },
   { label: "Activity", path: "/admin/activity", subtitle: "Audit log", icon: "activity" as const },
 ];
 

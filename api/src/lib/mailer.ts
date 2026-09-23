@@ -11,14 +11,25 @@ const transporter = nodemailer.createTransport({
   },
 });
 
-async function send(to: string, subject: string, html: string, text: string) {
+async function send(to: string, subject: string, html: string, text: string, replyTo?: string) {
   await transporter.sendMail({
     from: env.smtp.from,
     to,
     subject,
     html,
     text,
+    replyTo,
   });
+}
+
+/** Keeps anything a stranger typed from being read as markup in our own inbox. */
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
 }
 
 function wrapper(title: string, bodyHtml: string): string {
@@ -89,4 +100,65 @@ export async function sendWelcomeEmail(to: string, fullName: string) {
     `<p style="color:#333;font-size:14px;line-height:1.6;">Your AGRIK account is verified and ready. Start with advisory, check the marketplace, or set up your farm profile.</p>`
   );
   await send(to, "Welcome to AGRIK", html, `Welcome to AGRIK, ${fullName || "there"}. Your account is verified and ready.`);
+}
+
+export type ContactEnquiry = {
+  id: number;
+  name: string;
+  email: string;
+  phone?: string | null;
+  topic: string;
+  message: string;
+};
+
+/**
+ * Goes to the team inbox. Reply-To is the enquirer, so answering the notification answers
+ * the farmer directly rather than mailing ourselves.
+ */
+export async function sendContactNotificationEmail(to: string, enquiry: ContactEnquiry) {
+  const rows: [string, string][] = [
+    ["From", enquiry.name],
+    ["Email", enquiry.email],
+    ["Phone", enquiry.phone || "not given"],
+    ["Topic", enquiry.topic],
+  ];
+  const html = wrapper(
+    `New enquiry: ${escapeHtml(enquiry.topic)}`,
+    `${rows
+      .map(
+        ([label, value]) =>
+          `<p style="margin:0 0 6px;color:#333;font-size:14px;"><strong style="color:#767a70;">${label}:</strong> ${escapeHtml(value)}</p>`
+      )
+      .join("")}
+     <div style="margin:18px 0;padding:14px;background:#f4f5ef;border-radius:10px;color:#333;font-size:14px;line-height:1.6;white-space:pre-wrap;">${escapeHtml(
+       enquiry.message
+     )}</div>
+     <p style="color:#767a70;font-size:13px;">Reference #${enquiry.id}. Reply to this email to answer ${escapeHtml(
+       enquiry.name
+     )} directly.</p>`
+  );
+  const text = `New AGRIK enquiry #${enquiry.id}\n\nFrom: ${enquiry.name}\nEmail: ${enquiry.email}\nPhone: ${
+    enquiry.phone || "not given"
+  }\nTopic: ${enquiry.topic}\n\n${enquiry.message}\n\nReply to this email to answer them directly.`;
+
+  await send(to, `AGRIK enquiry #${enquiry.id}: ${enquiry.topic}`, html, text, enquiry.email);
+}
+
+/** Goes to the person who wrote in, so they know a human will see it. */
+export async function sendContactAcknowledgementEmail(enquiry: ContactEnquiry) {
+  const html = wrapper(
+    "We have your message",
+    `<p style="color:#333;font-size:14px;line-height:1.6;">Hello ${escapeHtml(enquiry.name)},</p>
+     <p style="color:#333;font-size:14px;line-height:1.6;">Thank you for contacting AGRIK about <strong>${escapeHtml(
+       enquiry.topic
+     )}</strong>. Our team has your message and will reply to this address, usually within two working days.</p>
+     <p style="color:#767a70;font-size:13px;line-height:1.6;">This is what you sent us:</p>
+     <div style="margin:10px 0 18px;padding:14px;background:#f4f5ef;border-radius:10px;color:#333;font-size:14px;line-height:1.6;white-space:pre-wrap;">${escapeHtml(
+       enquiry.message
+     )}</div>
+     <p style="color:#767a70;font-size:13px;">Your reference is <strong>#${enquiry.id}</strong>. You can reply to this email to add anything else.</p>`
+  );
+  const text = `Hello ${enquiry.name},\n\nThank you for contacting AGRIK about ${enquiry.topic}. Our team has your message and will reply to this address, usually within two working days.\n\nWhat you sent us:\n${enquiry.message}\n\nYour reference is #${enquiry.id}. You can reply to this email to add anything else.\n\nAGRIK`;
+
+  await send(enquiry.email, `We have your message (#${enquiry.id}) — AGRIK`, html, text, env.smtp.contactInbox);
 }

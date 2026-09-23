@@ -34,6 +34,8 @@ export const env = {
     user: required("SMTP_USER"),
     pass: required("SMTP_PASS"),
     from: optional("MAIL_FROM", "AGRIK <alerts@agrik.co>"),
+    /** Where public contact-form enquiries land. */
+    contactInbox: optional("CONTACT_INBOX", "info@agrik.co"),
   },
 
   deepseek: {

@@ -18,6 +18,7 @@ const AdminPrices = lazy(() => import("./pages/AdminPrices"));
 const AdminAlerts = lazy(() => import("./pages/AdminAlerts"));
 const AdminServices = lazy(() => import("./pages/AdminServices"));
 const AdminActivity = lazy(() => import("./pages/AdminActivity"));
+const AdminContact = lazy(() => import("./pages/AdminContact"));
 const FarmerLayout = lazy(() => import("./pages/FarmerLayout"));
 const FarmerOverview = lazy(() => import("./pages/FarmerOverview"));
 const FarmerFarm = lazy(() => import("./pages/FarmerFarm"));
@@ -47,6 +48,7 @@ const ProviderMarketplace = lazy(() => import("./pages/ProviderMarketplace"));
 const ProviderLeads = lazy(() => import("./pages/ProviderLeads"));
 const ProviderMarketing = lazy(() => import("./pages/ProviderMarketing"));
 const PublicMarketplace = lazy(() => import("./pages/PublicMarketplace"));
+const ContactPage = lazy(() => import("./pages/ContactPage"));
 const PublicListingDetails = lazy(() => import("./pages/PublicListingDetails"));
 
 function RouteFallback() {
@@ -95,6 +97,7 @@ export default function App() {
           <Route path="prices" element={<AdminPrices />} />
           <Route path="alerts" element={<AdminAlerts />} />
           <Route path="services" element={<AdminServices />} />
+          <Route path="contact" element={<AdminContact />} />
           <Route path="activity" element={<AdminActivity />} />
         </Route>
         <Route
@@ -137,6 +140,7 @@ export default function App() {
         <Route element={<AppLayout />}>
           <Route path="/" element={isAuthed ? <Navigate to={defaultPath} /> : <Landing />} />
           <Route path="/marketplace" element={<PublicMarketplace />} />
+          <Route path="/contact" element={<ContactPage />} />
           <Route path="/marketplace/listings/:listingId" element={<PublicListingDetails />} />
           <Route path="/auth" element={isAuthed ? <Navigate to={defaultPath} /> : <LoginPage />} />
           <Route path="/auth/register" element={isAuthed ? <Navigate to={defaultPath} /> : <RegisterPage />} />

@@ -31,6 +31,7 @@ export default function AppLayout() {
         <nav className="nav-links" onClick={() => setMenuOpen(false)}>
           <NavLink to="/">Home</NavLink>
           <NavLink to="/marketplace">Marketplace</NavLink>
+          <NavLink to="/contact">Contact</NavLink>
           {user ? <NavLink to={dashboardPath}>Dashboard</NavLink> : <NavLink to="/auth">Sign in</NavLink>}
           {user?.role === "admin" && <NavLink to="/admin">Admin</NavLink>}
         </nav>
@@ -52,6 +53,7 @@ export default function AppLayout() {
       <footer className="footer">
         <div>AGRIK (c) 2026</div>
         <div>Built for smallholder farmers</div>
+        <Link to="/contact">Contact us</Link>
       </footer>
     </div>
   );

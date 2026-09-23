@@ -332,6 +332,32 @@ model Subscription {
 /// providers post for sale in the marketplace. The admin console used to write its
 /// "platform services" into MarketService, which published them to the public feed
 /// and meant nothing an admin created could ever be subscribed to.
+/// A message sent from the public contact form. Kept in the database as well as emailed,
+/// so a lost or filtered notification never means a lost enquiry.
+model ContactMessage {
+  id           Int      @id @default(autoincrement())
+  name         String
+  email        String
+  phone        String?
+  topic        String
+  message      String
+  /// new | read | replied | closed
+  status       String   @default("new")
+  /// Free-text note an admin adds while working the queue.
+  adminNote    String?  @map("admin_note")
+  /// Whether the notification and acknowledgement actually left the server.
+  notified     Boolean  @default(false)
+  acknowledged Boolean  @default(false)
+  ipAddress    String?  @map("ip_address")
+  userAgent    String?  @map("user_agent")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  @@index([status])
+  @@index([createdAt])
+  @@map("contact_messages")
+}
+
 model ServicePlan {
   id            Int      @id @default(autoincrement())
   /// Stable key. `Subscription.plan` stores this, so it must not change once live.

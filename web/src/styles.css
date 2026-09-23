@@ -12394,3 +12394,191 @@ a {
   max-width: 100%;
   box-sizing: border-box;
 }
+
+/* ---------------------------------------------------------------------------
+   Public contact page
+   --------------------------------------------------------------------------- */
+.contact-page {
+  display: grid;
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+  gap: 24px;
+  align-items: start;
+  max-width: 1040px;
+  margin: 0 auto;
+  padding: 28px 0 48px;
+}
+
+.contact-intro h1 {
+  margin: 0 0 10px;
+  font-size: clamp(26px, 3vw, 36px);
+  line-height: 1.15;
+}
+
+.contact-intro > p {
+  margin: 0 0 20px;
+  font-size: 15px;
+  line-height: 1.6;
+  color: rgba(11, 11, 11, 0.66);
+}
+
+.contact-channels {
+  display: grid;
+  gap: 8px;
+}
+
+.contact-channel {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 12px;
+  border-radius: 14px;
+  border: 1px solid rgba(11, 11, 11, 0.08);
+  background: var(--color-white);
+  text-decoration: none;
+  color: inherit;
+}
+
+.contact-channel:hover {
+  border-color: rgba(31, 111, 61, 0.35);
+  background: rgba(31, 111, 61, 0.04);
+}
+
+.contact-channel-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  flex: 0 0 auto;
+  border-radius: 10px;
+  background: rgba(31, 111, 61, 0.1);
+  color: var(--color-primary);
+}
+
+.contact-channel strong {
+  display: block;
+  font-size: 14px;
+}
+
+.contact-channel small {
+  display: block;
+  font-size: 12px;
+  color: rgba(11, 11, 11, 0.55);
+  margin-top: 1px;
+}
+
+.contact-form {
+  display: grid;
+  gap: 12px;
+  padding: 20px;
+  border-radius: 18px;
+  border: 1px solid rgba(11, 11, 11, 0.08);
+  background: var(--color-white);
+  box-shadow: 0 16px 34px rgba(11, 11, 11, 0.07);
+}
+
+.contact-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.contact-form-span {
+  grid-column: 1 / -1;
+}
+
+.contact-submit {
+  justify-self: start;
+  min-width: 170px;
+}
+
+.contact-privacy {
+  margin: 0;
+  font-size: 12px;
+}
+
+/* Present to a bot, invisible and unreachable to a person, including screen readers. */
+.contact-honeypot {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.contact-done {
+  grid-column: 1 / -1;
+  justify-self: center;
+  max-width: 520px;
+  text-align: center;
+  display: grid;
+  gap: 10px;
+  padding: 32px 24px;
+  border-radius: 18px;
+  border: 1px solid rgba(11, 11, 11, 0.08);
+  background: var(--color-white);
+  box-shadow: 0 16px 34px rgba(11, 11, 11, 0.07);
+}
+
+.contact-done-mark {
+  justify-self: center;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 54px;
+  height: 54px;
+  border-radius: 50%;
+  background: rgba(31, 111, 61, 0.12);
+  color: var(--color-primary);
+}
+
+.contact-done h1 {
+  margin: 0;
+  font-size: 23px;
+}
+
+.contact-done p {
+  margin: 0;
+  font-size: 14.5px;
+  line-height: 1.6;
+}
+
+.contact-done-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-top: 6px;
+}
+
+@media (max-width: 860px) {
+  .contact-page {
+    grid-template-columns: 1fr;
+    gap: 18px;
+    padding: 18px 0 32px;
+  }
+}
+
+@media (max-width: 760px) {
+  .contact-form {
+    padding: 14px;
+    border-radius: 14px;
+  }
+
+  .contact-form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .contact-submit {
+    justify-self: stretch;
+  }
+}
+
+/* A contact message keeps the line breaks the sender typed. */
+.admin-contact-body {
+  margin: 0;
+  white-space: pre-wrap;
+  font-size: 13px;
+  line-height: 1.6;
+}
