@@ -23,7 +23,40 @@ export const CROPS = [
 
 export const CURRENCIES = ["UGX", "USD", "KES", "TZS"];
 
-export const PRICE_SOURCES = ["market_survey", "admin_manual", "partner_feed", "farmer_reported"];
+/**
+ * `placeholder` marks a figure that was seeded to give the board shape, not one anyone
+ * surveyed. It is shown to farmers alongside the price so a seeded number is never
+ * mistaken for a real quote; replace it with a real source when the price is confirmed.
+ */
+export const PRICE_SOURCES = ["market_survey", "admin_manual", "partner_feed", "farmer_reported", "placeholder"];
+
+/**
+ * Starter price board: one row per major crop in the districts with the most activity.
+ * Every figure is a plausible order of magnitude for a Ugandan farm gate in UGX/kg, NOT a
+ * surveyed rate — that is why they seed with source "placeholder" and why the console
+ * flags them. Replace them before anyone trades on them.
+ */
+export const DEFAULT_PRICE_SEED: { crop: string; price: number }[] = [
+  { crop: "maize", price: 1200 },
+  { crop: "beans", price: 3200 },
+  { crop: "cassava", price: 800 },
+  { crop: "groundnut", price: 5500 },
+  { crop: "banana", price: 900 },
+  { crop: "coffee", price: 9000 },
+  { crop: "rice", price: 3500 },
+  { crop: "sorghum", price: 1500 },
+  { crop: "millet", price: 2600 },
+  { crop: "sweet potato", price: 700 },
+  { crop: "irish potato", price: 1800 },
+  { crop: "sunflower", price: 2200 },
+  { crop: "soybean", price: 2800 },
+  { crop: "sesame", price: 6000 },
+  { crop: "onion", price: 2500 },
+  { crop: "tomato", price: 2000 },
+];
+
+/** The districts the seeded board covers. Kept short so the board stays readable. */
+export const DEFAULT_PRICE_DISTRICTS = ["Kampala", "Mbale", "Gulu", "Mbarara", "Lira", "Masaka"];
 
 export const SERVICE_TYPES = [
   "mechanization",

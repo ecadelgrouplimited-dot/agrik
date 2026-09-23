@@ -15,6 +15,8 @@ import {
   ALERT_CHANNELS,
   BILLING_PERIODS,
   DEFAULT_SERVICE_PLANS,
+  DEFAULT_PRICE_SEED,
+  DEFAULT_PRICE_DISTRICTS,
 } from "../reference/config.js";
 
 const router = Router();
@@ -447,6 +449,45 @@ function servicePlanOut(plan: {
 // These routes manage AGRIK's own plan catalog. They used to write into MarketService,
 // which published every plan to the public marketplace feed and meant nothing created
 // here could ever be subscribed to.
+const priceSeedSchema = z.object({
+  districts: z.array(z.string()).nullable().optional(),
+  crops: z.array(z.string()).nullable().optional(),
+});
+
+router.post(
+  "/prices/seed",
+  asyncHandler(async (req, res) => {
+    const body = priceSeedSchema.parse(req.body);
+    const districts = body.districts?.length ? body.districts : DEFAULT_PRICE_DISTRICTS;
+    const crops = body.crops?.length
+      ? DEFAULT_PRICE_SEED.filter((row) => body.crops!.includes(row.crop))
+      : DEFAULT_PRICE_SEED;
+
+    // Idempotent on crop+district: seeding twice must not double the board, and must
+    // never overwrite a price someone has since corrected.
+    const existing = await prisma.marketPrice.findMany({ select: { crop: true, district: true } });
+    const have = new Set(existing.map((row) => `${row.crop}|${row.district}`));
+
+    const rows = crops.flatMap((row) =>
+      districts
+        .filter((district) => !have.has(`${row.crop}|${district}`))
+        .map((district) => ({
+          crop: row.crop,
+          district,
+          market: `${district} main market`,
+          price: row.price,
+          currency: "UGX",
+          // Self-labelling: the console and the farmer view both show this.
+          source: "placeholder",
+        }))
+    );
+
+    const created = await prisma.marketPrice.createMany({ data: rows });
+    await logActivity(req.adminId!, "prices_seeded", { count: created.count }, req.ip);
+    res.json({ created: created.count, skipped: crops.length * districts.length - created.count });
+  })
+);
+
 router.get(
   "/services",
   asyncHandler(async (_req, res) => {

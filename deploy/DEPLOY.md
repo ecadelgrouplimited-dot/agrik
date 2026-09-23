@@ -91,6 +91,21 @@ cd web
 VITE_API_BASE_URL=https://api.agrik.co npm ci && npm run build
 ```
 
+Ship `assets/` **without** `--delete`, then the entry files:
+
+```bash
+rsync -az web/dist/assets/ agrik-host:/var/www/agrik/web/dist/assets/
+rsync -az --exclude assets/ web/dist/ agrik-host:/var/www/agrik/web/dist/
+```
+
+A tab that was already open still holds the previous `index.html` and its chunk
+hashes. Deleting the old `assets/` makes the next lazy route that tab visits
+404, which is what "Failed to fetch dynamically imported module" on a phone
+is. Leaving the old chunks costs a few hundred KB and keeps open sessions
+working; prune them on a later deploy once nobody is holding that build. The
+app also reloads itself once when it does hit a missing chunk, but that is the
+safety net, not the fix.
+
 ## 6. systemd + nginx
 
 ```bash

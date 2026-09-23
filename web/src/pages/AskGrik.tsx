@@ -2351,10 +2351,6 @@ export default function AskGrik() {
       <div className="farmer-page-header grik-page-header">
         <p className="muted">Ask with text, voice, photos, or short video.</p>
         <div className="grik-page-actions">
-          <button className="btn ghost small" type="button" onClick={handleNewConversation}>
-            <Icon name="plus" size={14} />
-            New chat
-          </button>
           <button
             className={`btn small ${realtimeModalOpen && realtimeConnected ? "ghost" : ""}`}
             type="button"

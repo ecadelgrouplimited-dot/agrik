@@ -52,6 +52,10 @@ export default function FarmerHistory() {
   const [error, setError] = useState<string | null>(null);
   const [kindFilter, setKindFilter] = useState<TimelineKind>("all");
   const [search, setSearch] = useState("");
+  // The timeline rendered every entry, and an advisory entry carries a full GRIK reply.
+  // On a phone that ran to roughly 19,000px of scroll, so it pages in instead.
+  const PAGE = 15;
+  const [visibleCount, setVisibleCount] = useState(PAGE);
 
   const loadHistory = () => {
     if (!user) return;
@@ -126,6 +130,11 @@ export default function FarmerHistory() {
     ];
     return items.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
   }, [alerts, chats, listings, subscriptions]);
+
+  // Any change to the filters starts the list again from the top.
+  useEffect(() => {
+    setVisibleCount(PAGE);
+  }, [kindFilter, search]);
 
   const filteredTimeline = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -231,7 +240,7 @@ export default function FarmerHistory() {
           <p className="muted">No activity matches the current filter.</p>
         ) : (
           <div className="farmer-timeline-list">
-            {filteredTimeline.map((item) => (
+            {filteredTimeline.slice(0, visibleCount).map((item) => (
               <article key={item.id} className="farmer-timeline-item">
                 <div className="farmer-timeline-dot" aria-hidden="true" />
                 <div className="farmer-timeline-content">
@@ -247,6 +256,11 @@ export default function FarmerHistory() {
                 </div>
               </article>
             ))}
+            {filteredTimeline.length > visibleCount ? (
+              <button className="btn ghost small farmer-timeline-more" type="button" onClick={() => setVisibleCount((n) => n + PAGE)}>
+                Show {Math.min(PAGE, filteredTimeline.length - visibleCount)} more of {filteredTimeline.length}
+              </button>
+            ) : null}
           </div>
         )}
       </section>

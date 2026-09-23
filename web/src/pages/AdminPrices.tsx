@@ -124,6 +124,26 @@ export default function AdminPrices() {
   const [selectedPriceId, setSelectedPriceId] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [seeding, setSeeding] = useState(false);
+  const placeholderCount = useMemo(() => prices.filter((price) => price.source === "placeholder").length, [prices]);
+
+  const handleSeedPrices = async () => {
+    setSeeding(true);
+    setError(null);
+    setStatusMessage(null);
+    try {
+      const result = await api.adminSeedPrices();
+      await loadPrices();
+      setStatusMessage(
+        `${result.created} placeholder price(s) added${result.skipped ? `, ${result.skipped} already covered` : ""}. ` +
+          "They are marked \u201cplaceholder\u201d until you replace them with surveyed rates."
+      );
+    } catch {
+      setError("Unable to seed the starter price board.");
+    } finally {
+      setSeeding(false);
+    }
+  };
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
 
   const buildQuery = (params: Record<string, string>) => {
@@ -317,12 +337,21 @@ export default function AdminPrices() {
       {statusMessage && <p className="status">{statusMessage}</p>}
       <AdminActiveDateChips from={dateRange.from} to={dateRange.to} label="Captured date filter" />
 
+      {/* Seeded figures are shown to farmers as ordinary prices — the "placeholder" source
+          is only visible here. Say so until they are gone. */}
+      {placeholderCount > 0 ? (
+        <p className="status error">
+          {placeholderCount} price{placeholderCount === 1 ? " is" : "s are"} still a seeded placeholder, not a surveyed
+          rate. Farmers see them as ordinary prices — replace them before anyone trades on them.
+        </p>
+      ) : null}
+
       <div className="admin-kpi-grid">
         {[
           { label: "Records", value: priceSummary.total, meta: "Current filtered set" },
           { label: "Fresh", value: priceSummary.fresh, meta: "Updated within 5 days" },
           { label: "Stale", value: priceSummary.stale, meta: "Needs a new publish cycle" },
-          { label: "Coverage", value: priceSummary.markets, meta: "District/market combinations" },
+          { label: "Placeholder", value: placeholderCount, meta: "Seeded, not surveyed" },
         ].map((item) => (
           <div key={item.label} className="admin-kpi-card">
             <div className="admin-kpi-label">{item.label}</div>
@@ -333,12 +362,12 @@ export default function AdminPrices() {
       </div>
 
       <section className="admin-card">
-        <div className="admin-card-header">
-          <div>
-            <div className="label">Filters</div>
-            <h3>Price records</h3>
-          </div>
+        <div className="admin-card-header compact">
+          <h3>Price records</h3>
           <div className="admin-filter-bar admin-price-filter-bar">
+            <button className="btn ghost small" type="button" onClick={handleSeedPrices} disabled={seeding}>
+              {seeding ? "Seeding..." : "Seed starter board"}
+            </button>
             <button className="btn ghost small" type="button" onClick={() => exportPricesCsv(filteredPrices)}>
               Export filtered
             </button>

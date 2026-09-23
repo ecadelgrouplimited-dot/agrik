@@ -11790,3 +11790,415 @@ a {
   line-height: 1.5;
   color: rgba(11, 11, 11, 0.62);
 }
+
+/* ===========================================================================
+   Phone layout
+   ---------------------------------------------------------------------------
+   Almost every AGRIK user is on a phone. The desktop sizes carried straight
+   down to 360px, so a four-stat header ate a screen before any content and the
+   history timeline ran to 19,000px. This block sets a tighter type and density
+   scale for phones. It is last in the file so it wins on equal specificity.
+   =========================================================================== */
+@media (max-width: 760px) {
+  /* --- Shell chrome ------------------------------------------------------ */
+
+  /* The topbar carried a back button, a Menu button, an eyebrow and a title
+     across two rows. The eyebrow only ever restated the title. */
+  .farmer-topbar,
+  .admin-topbar {
+    padding: 8px 14px;
+    gap: 8px;
+  }
+
+  .farmer-topbar .label,
+  .admin-topbar .label,
+  .dashboard-topbar-copy .label {
+    display: none;
+  }
+
+  .farmer-topbar-heading,
+  .admin-topbar-heading {
+    font-size: 16px;
+    line-height: 1.2;
+  }
+
+  .farmer-content,
+  .admin-content {
+    padding: 12px 14px calc(76px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .farmer-page,
+  .admin-page {
+    gap: 10px;
+  }
+
+  /* --- Navigation drawer ------------------------------------------------- */
+
+  /* Each entry was a ~90px block with an icon, a label and an uppercase
+     subtitle, so nine destinations could not fit on one screen. */
+  .farmer-link,
+  .admin-link {
+    padding: 8px 11px;
+    border-radius: 11px;
+    gap: 1px;
+  }
+
+  .farmer-link-label,
+  .admin-link-label {
+    font-size: 14.5px;
+  }
+
+  .farmer-link-sub,
+  .admin-link-sub {
+    font-size: 9.5px;
+    letter-spacing: 0.05em;
+    opacity: 0.6;
+    /* The subtitle is orientation, not a second label: one line, never wrapping. */
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .farmer-link .nav-icon,
+  .admin-link .nav-icon {
+    width: 26px;
+    height: 26px;
+  }
+
+  .farmer-nav,
+  .admin-nav {
+    gap: 4px;
+  }
+
+  /* --- Cards and headings ------------------------------------------------ */
+
+  .farmer-card,
+  .admin-card,
+  .fw-panel {
+    padding: 12px;
+    gap: 7px;
+    border-radius: 14px;
+    box-shadow: 0 6px 14px rgba(11, 11, 11, 0.06);
+  }
+
+  .farmer-card-header h3,
+  .admin-card-header h3,
+  .fw-panel-head h2 {
+    font-size: 14.5px;
+    line-height: 1.25;
+  }
+
+  .farmer-card-header .label,
+  .admin-card-header .label {
+    font-size: 9.5px;
+  }
+
+  .farmer-card p,
+  .admin-card p,
+  .fw-panel p {
+    font-size: 13px;
+    line-height: 1.5;
+  }
+
+  /* --- Stat grids -------------------------------------------------------- */
+
+  /* Two up rather than one, at a size that leaves room for the page. */
+  .farmer-kpi-grid,
+  .admin-kpi-grid,
+  .farm-kpi-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .farmer-kpi-card,
+  .admin-kpi-card {
+    padding: 10px;
+    gap: 2px;
+    border-radius: 12px;
+    box-shadow: none;
+  }
+
+  .farmer-kpi-value,
+  .admin-kpi-value {
+    font-size: 20px;
+    line-height: 1.1;
+  }
+
+  .farmer-kpi-label,
+  .admin-kpi-label {
+    font-size: 9.5px;
+  }
+
+  .farmer-kpi-meta,
+  .admin-kpi-meta {
+    font-size: 10.5px;
+    line-height: 1.3;
+  }
+
+  /* The icon beside a stat label is decoration that costs a whole row here. */
+  .farmer-kpi-head .kpi-icon,
+  .admin-kpi-card .section-icon {
+    display: none;
+  }
+
+  /* --- Label/value rows -------------------------------------------------- */
+
+  /* These stacked one full-width row per fact — four facts filled a screen. */
+  .farmer-side-summary,
+  .admin-detail-grid,
+  .farmer-detail-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px;
+  }
+
+  .farmer-side-summary-item {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1px;
+    padding: 8px 10px;
+    border-radius: 10px;
+  }
+
+  .farmer-side-summary-item span {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    opacity: 0.6;
+  }
+
+  .farmer-side-summary-item strong {
+    font-size: 13.5px;
+  }
+
+  /* --- Action rows ------------------------------------------------------- */
+
+  /* Button rows that did not wrap were what pushed pages past the viewport. */
+  .farmer-command-actions,
+  .admin-page-actions,
+  .admin-filter-bar,
+  .fw-actions,
+  .farmer-chip-row,
+  .admin-chip-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    min-width: 0;
+  }
+
+  .fw-actions > *,
+  .admin-filter-bar > * {
+    flex: 0 1 auto;
+    min-width: 0;
+  }
+
+  .fw-search {
+    flex: 1 1 100%;
+    min-width: 0;
+  }
+
+  /* Compact buttons still have to be hittable with a thumb: 44px is the platform
+     guidance on both iOS and Android, and these were landing at 31px. */
+  .btn,
+  .btn.small,
+  .btn.ghost.small,
+  .fw-tab,
+  .fw-subtab,
+  .admin-role-chip,
+  .link-button {
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .btn.small,
+  .btn.ghost.small {
+    padding: 6px 14px;
+    font-size: 12.5px;
+  }
+
+  .fw-icon-btn,
+  .admin-icon-btn,
+  .farmer-back-btn,
+  .grik-icon-btn,
+  .btn.ghost.tiny {
+    min-width: 40px;
+    min-height: 40px;
+  }
+
+  .fw-search,
+  .field input,
+  .field select {
+    min-height: 44px;
+  }
+
+  .mobile-fab-trigger {
+    min-height: 44px;
+  }
+
+  /* The remaining stragglers: the composer's tool row, and rows that are themselves
+     the tap target. */
+  .grik-tool-btn,
+  .grik-composer-toolbar button,
+  .fw-farm-pick,
+  .fw-farm select,
+  select {
+    min-height: 40px;
+  }
+
+  /* An inline text link inside a panel header is a target too; give it room without
+     turning it into a button. */
+  .fw-panel-link,
+  .admin-panel-link {
+    display: inline-flex;
+    align-items: center;
+    min-height: 40px;
+    padding: 0 2px;
+  }
+
+  /* --- Forms ------------------------------------------------------------- */
+
+  /* 16px keeps iOS from zooming the page when a field takes focus. */
+  .field input,
+  .field select,
+  .field textarea {
+    font-size: 16px;
+    padding: 9px 11px;
+  }
+
+  .field {
+    font-size: 12.5px;
+    gap: 4px;
+  }
+
+  .settings-grid,
+  .farmer-form-grid,
+  .admin-form-grid {
+    grid-template-columns: 1fr;
+    gap: 9px;
+  }
+
+  /* --- Floating actions -------------------------------------------------- */
+
+  .mobile-fab-trigger {
+    padding: 9px 14px;
+    font-size: 13px;
+  }
+
+  .mobile-fab {
+    right: 12px;
+    bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+  }
+
+  /* --- Plan cards -------------------------------------------------------- */
+
+  .fw-plan-grid {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .fw-plan-card {
+    padding: 12px;
+  }
+
+  /* --- Tables ------------------------------------------------------------ */
+
+  .admin-grid {
+    font-size: 12px;
+  }
+
+  .admin-grid th,
+  .admin-grid td {
+    padding: 6px 8px;
+  }
+
+  /* --- Page hero --------------------------------------------------------- */
+
+  /* The hero opened four pages with an eyebrow, a two-line headline, an
+     explainer and two stacked mini-cards — about a screen before any content.
+     Keep the headline and the figures; drop the prose and go two up. */
+  .farmer-command-hero {
+    padding: 12px;
+    gap: 8px;
+    grid-template-columns: 1fr;
+  }
+
+  .farmer-command-hero-copy h3 {
+    font-size: 16px;
+    line-height: 1.25;
+  }
+
+  .farmer-command-hero-copy > p.muted,
+  .farmer-command-hero-copy > .muted:not(.label) {
+    display: none;
+  }
+
+  .farmer-command-hero-side {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .farmer-command-mini-card {
+    padding: 9px 10px;
+    gap: 1px;
+    border-radius: 10px;
+  }
+
+  .farmer-command-mini-card strong {
+    font-size: 15px;
+    line-height: 1.15;
+  }
+
+  .farmer-command-mini-card .muted,
+  .farmer-command-mini-card .label {
+    font-size: 10px;
+    line-height: 1.3;
+  }
+
+  /* The top action row stacked one button per line. */
+  .farmer-page-header,
+  .farmer-page-header.header-actions-only {
+    align-items: center;
+  }
+
+  .farmer-page-header h1 {
+    font-size: 19px;
+  }
+
+  .chip,
+  .pill {
+    font-size: 10.5px;
+    padding: 3px 9px;
+  }
+
+  /* --- Chat -------------------------------------------------------------- */
+
+  /* The transcript sat in its own scrolling box inside a card, so a reply was
+     read through a small window with a nested scrollbar. Let the page scroll. */
+  .grik-chat-stream {
+    /* A fixed 72vh window inside a card meant a reply was read through a small
+       box with its own scrollbar, under a phone keyboard. Let it size to the
+       conversation and scroll with the page instead. */
+    min-height: 0;
+    max-height: none;
+  }
+
+  .grik-conversation-list {
+    max-height: 220px;
+  }
+}
+
+/* A timeline entry's body is a full advisory reply; show the opening and let the
+   entry itself be the link to the rest, rather than 40 lines in a list. */
+.farmer-timeline-content p.muted {
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  line-clamp: 4;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.farmer-timeline-more {
+  justify-self: start;
+  margin-top: 4px;
+}

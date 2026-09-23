@@ -945,6 +945,11 @@ export const api = {
     adminRequest(`/admin/alerts/${alertId}`, {
       method: "DELETE",
     }),
+  adminSeedPrices: () =>
+    adminRequest<{ created: number; skipped: number }>("/admin/prices/seed", {
+      method: "POST",
+      body: JSON.stringify({}),
+    }),
   adminPrices: (query = "") => adminRequest<{ items: unknown[] }>(`/admin/prices${query}`),
   adminCreatePrice: (payload: {
     crop: string;
