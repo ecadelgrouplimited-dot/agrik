@@ -16,6 +16,12 @@ import weatherRouter from "./modules/weather/router.js";
 export function createApp() {
   const app = express();
 
+  // nginx is the only thing that talks to this process, and it sets X-Forwarded-For.
+  // Without this, req.ip is 127.0.0.1 for every request: the audit log records a useless
+  // address and the sign-in throttle's per-IP component does nothing. Trust exactly one
+  // hop, so a client cannot forge the chain by sending its own X-Forwarded-For.
+  app.set("trust proxy", 1);
+
   app.use(helmet({ crossOriginResourcePolicy: false }));
   app.use(
     cors({

@@ -65,8 +65,9 @@ sudo systemctl restart agrik-api
 
 ## Creating and resetting admins
 
-There is no sign-up, no invite flow, and no way to create an admin from inside
-the console. Admins are created on the server with the seed script:
+There is no sign-up, no invite flow, and **no password change inside the
+console** — an admin cannot rotate their own credentials from `/admin`. Admins
+are created, and passwords rotated, on the server with the seed script:
 
 ```bash
 cd /var/www/agrik/api
@@ -77,8 +78,8 @@ SEED_ADMIN_EMAIL=ops@agrik.co SEED_ADMIN_PASSWORD='CHANGE_ME' \
 - The email is lowercased before it is stored, because sign-in lowercases it
   before looking it up. `Ops@Agrik.co` and `ops@agrik.co` are the same account.
 - Running it again for an **existing** email **resets that admin's password**
-  and re-activates the account. This is the supported way to recover a
-  forgotten console password.
+  and re-activates the account. This is the only way to change a console
+  password, whether it was forgotten or is simply being rotated.
 - The script also seeds reference districts, which is idempotent.
 
 To disable an admin without deleting them, set their status away from
