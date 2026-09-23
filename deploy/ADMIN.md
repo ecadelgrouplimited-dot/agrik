@@ -39,11 +39,25 @@ and `SMTP_PASS` are required at boot (the API refuses to start without them),
 but a wrong *value* only shows up at sign-in time. If mail fails, the console
 says so plainly rather than leaving you waiting for a code that is not coming.
 
-Check mail health before you need it:
+The API checks SMTP once at startup and reports the result, so a bad credential shows
+up the moment the service starts rather than when someone tries to sign in:
 
 ```bash
-sudo journalctl -u agrik-api -n 50 | grep -i "admin OTP"
+sudo tail -5 /var/www/agrik/logs/api.log | grep SMTP
+# SMTP ready: info@agrik.co via smtp.hostinger.com:465
 ```
+
+If it is not ready, the reason is in the error log:
+
+```bash
+sudo tail -30 /var/www/agrik/logs/api-error.log
+```
+
+`535 5.7.8 authentication failed` means the mailbox password in
+`/var/www/agrik/api/.env` no longer matches Hostinger. Note that Hostinger
+authenticates the sending mailbox, so `MAIL_FROM` has to be the same address as
+`SMTP_USER` or its alias — sending as one mailbox while authenticating as another is
+rejected.
 
 ### Lockouts
 

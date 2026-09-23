@@ -11,6 +11,27 @@ const transporter = nodemailer.createTransport({
   },
 });
 
+/**
+ * Bad SMTP credentials otherwise stay invisible until the first person tries to sign in
+ * or register, because every send site catches its own failure. Checking once at boot
+ * puts it in the log the moment the service starts, which is where anyone looks first.
+ * It never prevents startup: mail being down must not take the whole API with it.
+ */
+export async function verifyMailer(): Promise<boolean> {
+  try {
+    await transporter.verify();
+    console.log(`SMTP ready: ${env.smtp.user} via ${env.smtp.host}:${env.smtp.port}`);
+    return true;
+  } catch (err) {
+    console.error(
+      `SMTP NOT WORKING for ${env.smtp.user} via ${env.smtp.host}:${env.smtp.port}. ` +
+        "Sign-in codes, email verification, password resets and contact emails will all fail until this is fixed.",
+      err
+    );
+    return false;
+  }
+}
+
 async function send(to: string, subject: string, html: string, text: string, replyTo?: string) {
   await transporter.sendMail({
     from: env.smtp.from,

@@ -3,7 +3,7 @@ import { z } from "zod";
 import { prisma } from "../../lib/prisma.js";
 import { asyncHandler } from "../../middleware/errorHandler.js";
 import { requireAuth } from "../../middleware/auth.js";
-import { badRequest, conflict, notFound, unauthorized } from "../../lib/http-error.js";
+import { badGateway, badRequest, conflict, notFound, unauthorized } from "../../lib/http-error.js";
 import { hashPassword, verifyPassword, generateNumericCode, hashCode, verifyCode } from "../../lib/password.js";
 import { signUserToken } from "../../lib/jwt.js";
 import { normalizeEmail, normalizePhone } from "./phone.js";
@@ -36,7 +36,7 @@ function toAuthUserOut(user: {
   };
 }
 
-async function issueVerificationCode(userId: string, email: string) {
+async function issueVerificationCode(userId: string, email: string): Promise<boolean> {
   const code = generateNumericCode();
   const codeHash = await hashCode(code);
   await prisma.emailVerification.create({
@@ -48,8 +48,12 @@ async function issueVerificationCode(userId: string, email: string) {
   });
   try {
     await sendVerificationEmail(email, code);
+    return true;
   } catch (err) {
-    console.error("Failed to send verification email", err);
+    // The account exists and the code is stored, so this is recoverable by asking for
+    // another code once mail is working. The caller decides what to tell the user.
+    console.error(`Failed to send verification email to ${email}`, err);
+    return false;
   }
 }
 
@@ -102,11 +106,14 @@ router.post(
       },
     });
 
-    await issueVerificationCode(user.id, email);
+    const codeSent = await issueVerificationCode(user.id, email);
 
     res.json({
       status: "verification_required",
-      message: "We sent a verification code to your email. Enter it to activate your account.",
+      code_sent: codeSent,
+      message: codeSent
+        ? "We sent a verification code to your email. Enter it to activate your account."
+        : "Your account was created, but we could not email your code just now. Use \u201cResend code\u201d in a few minutes.",
     });
   })
 );
@@ -159,10 +166,13 @@ router.post(
     if (!valid) throw unauthorized("Invalid phone number, email, or password.");
 
     if (user.verificationStatus !== "verified") {
-      await issueVerificationCode(user.id, user.email);
+      const codeSent = await issueVerificationCode(user.id, user.email);
       res.json({
         status: "verification_required",
-        message: "Please verify your email to continue. We just sent a new code.",
+        code_sent: codeSent,
+        message: codeSent
+          ? "Please verify your email to continue. We just sent a new code."
+          : "Please verify your email to continue, but we could not send a code just now. Try again in a few minutes.",
         user: toAuthUserOut(user),
       });
       return;
@@ -227,7 +237,8 @@ router.post(
       res.json({ status: "already_verified", message: "This account is already verified." });
       return;
     }
-    await issueVerificationCode(user.id, email);
+    const codeSent = await issueVerificationCode(user.id, email);
+    if (!codeSent) throw badGateway("We could not send the code just now. Please try again in a few minutes.");
     res.json({ status: "sent", message: "A new verification code has been sent to your email.", user: toAuthUserOut(user) });
   })
 );
