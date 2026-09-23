@@ -20,9 +20,7 @@ export default function FarmerFarmHome() {
     totalProjectedRevenue,
     totalPlannedCost,
     portfolioMargin,
-    totalCoverage,
     primaryCurrency,
-    mixedCurrency,
     activeFarmReadinessItems,
     activeFarmReadinessScore,
     activeFarmInsights,
@@ -31,191 +29,136 @@ export default function FarmerFarmHome() {
     markPrimaryFarm,
   } = useOutletContext<FarmerFarmWorkspaceContext>();
 
+  // Only surface figures that actually have a value. A wall of "--" tells the farmer nothing
+  // and buries the two or three numbers that are real.
+  const stats: { label: string; value: string }[] = [
+    { label: "Farms", value: String(farms.length) },
+    { label: "Crops", value: String(uniqueCropCount) },
+  ];
+  if (activeFarm) stats.push({ label: "Readiness", value: `${activeFarmReadinessScore}/5` });
+  if (totalAreaAcres > 0) stats.push({ label: "Total acres", value: formatDecimal(totalAreaAcres) });
+  if (farmsWithWaterAccess > 0) stats.push({ label: "With water", value: String(farmsWithWaterAccess) });
+  if (insuredFarms > 0) stats.push({ label: "Insured", value: String(insuredFarms) });
+  if (totalProjectedRevenue > 0) stats.push({ label: "Expected revenue", value: formatMoney(totalProjectedRevenue, primaryCurrency) });
+  if (totalPlannedCost > 0) stats.push({ label: "Planned cost", value: formatMoney(totalPlannedCost, primaryCurrency) });
+  if (portfolioMargin !== 0) stats.push({ label: "Margin", value: formatMoney(portfolioMargin, primaryCurrency) });
+
+  const pendingReadiness = activeFarmReadinessItems.filter((item) => !item.ready);
+  const insights = activeFarmInsights.slice(0, 4);
+
   return (
     <>
-      <section className="farmer-card">
-        <div className="farmer-card-header">
-          <div className="section-title-with-icon">
-            <span className="section-icon">
-              <Icon name="overview" size={18} />
+      {activeFarm && insights.length > 0 ? (
+        <section className="fw-panel">
+          <div className="fw-panel-head">
+            <h2>Needs your attention</h2>
+            <NavLink to="/dashboard/farm/manage" className="fw-panel-link">
+              Edit farm
+            </NavLink>
+          </div>
+          <ul className="fw-todo">
+            {insights.map((insight) => (
+              <li key={insight.id} className={`fw-todo-item ${insight.level}`}>
+                <span className={`fw-dot ${insight.level}`} aria-hidden="true" />
+                <div>
+                  <strong>{insight.title}</strong>
+                  <p>{insight.detail}</p>
+                </div>
+                <span className="fw-todo-action">{insight.action}</span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
+
+      <section className="fw-panel">
+        <div className="fw-panel-head">
+          <h2>Snapshot</h2>
+          {pendingReadiness.length > 0 ? (
+            <span className="fw-panel-note">
+              {pendingReadiness.length} setup step{pendingReadiness.length === 1 ? "" : "s"} left
             </span>
-            <div>
-              <div className="label">Portfolio</div>
-              <h3>Farm totals</h3>
-            </div>
-          </div>
-          <div className="farmer-inline-meta">
-            Insurance coverage tracked: {totalCoverage > 0 ? formatMoney(totalCoverage, primaryCurrency) : "--"}.
-            {mixedCurrency ? " Portfolio uses mixed currencies." : ""}
-          </div>
+          ) : (
+            <span className="fw-panel-note done">Setup complete</span>
+          )}
         </div>
 
-        <div className="farm-summary-grid">
-          <div className="farm-summary-card">
-            <div className="label">Farms</div>
-            <div className="farm-summary-value">{farms.length}</div>
-          </div>
-          <div className="farm-summary-card">
-            <div className="label">Unique crops</div>
-            <div className="farm-summary-value">{uniqueCropCount}</div>
-          </div>
-          <div className="farm-summary-card">
-            <div className="label">Water access farms</div>
-            <div className="farm-summary-value">{farmsWithWaterAccess}</div>
-          </div>
-          <div className="farm-summary-card">
-            <div className="label">Insured farms</div>
-            <div className="farm-summary-value">{insuredFarms}</div>
-          </div>
-          <div className="farm-summary-card">
-            <div className="label">Total acres</div>
-            <div className="farm-summary-value">{totalAreaAcres > 0 ? totalAreaAcres.toFixed(1) : "--"}</div>
-          </div>
-          <div className="farm-summary-card">
-            <div className="label">Expected revenue</div>
-            <div className="farm-summary-value">{totalProjectedRevenue > 0 ? formatMoney(totalProjectedRevenue, primaryCurrency) : "--"}</div>
-          </div>
-          <div className="farm-summary-card">
-            <div className="label">Planned cost</div>
-            <div className="farm-summary-value">{totalPlannedCost > 0 ? formatMoney(totalPlannedCost, primaryCurrency) : "--"}</div>
-          </div>
-          <div className="farm-summary-card">
-            <div className="label">Expected margin</div>
-            <div className="farm-summary-value">{portfolioMargin !== 0 ? formatMoney(portfolioMargin, primaryCurrency) : "--"}</div>
-          </div>
+        <div className="fw-stats">
+          {stats.map((stat) => (
+            <div key={stat.label} className="fw-stat">
+              <span>{stat.label}</span>
+              <strong>{stat.value}</strong>
+            </div>
+          ))}
         </div>
+
+        {activeFarm && activeFarmReadinessItems.length > 0 ? (
+          <div className="fw-readiness">
+            {activeFarmReadinessItems.map((item) => (
+              <span key={item.label} className={`fw-ready-pill${item.ready ? " done" : ""}`}>
+                {item.ready ? <Icon name="check-circle" size={12} /> : null}
+                {item.label}
+              </span>
+            ))}
+          </div>
+        ) : null}
       </section>
 
-      <section className="farmer-card">
-        <div className="farmer-card-header">
-          <div className="section-title-with-icon">
-            <span className="section-icon">
-              <Icon name="farm" size={18} />
-            </span>
-            <div>
-              <div className="label">Switcher</div>
-              <h3>Your farms</h3>
-            </div>
-          </div>
-          <NavLink to="/dashboard/farm/create" className="btn ghost small">
-            <Icon name="plus" size={14} />
-            Create farm
+      <section className="fw-panel">
+        <div className="fw-panel-head">
+          <h2>
+            Your farms <span className="fw-count">{farms.length}</span>
+          </h2>
+          <NavLink to="/dashboard/farm/create" className="fw-panel-link">
+            Add farm
           </NavLink>
         </div>
 
-        <div className="farm-portfolio-grid">
-          {farms.map((farm) => (
-            <article key={farm.id} className={`farm-portfolio-item ${farm.id === activeFarmId ? "active" : ""}`}>
-              <button className="farm-portfolio-select" type="button" onClick={() => setActiveFarmId(farm.id)}>
-                <div className="farm-portfolio-title-row">
-                  <strong>{farm.name || "Unnamed farm"}</strong>
-                  {farm.isPrimary ? <span className="pill">primary</span> : null}
-                </div>
-                <div className="farm-portfolio-meta">
-                  {[farm.parish, farm.district].filter(Boolean).join(", ") || "Location not set"}
-                </div>
-                <div className="farm-portfolio-meta">{farm.crops.length} crop{farm.crops.length === 1 ? "" : "s"}</div>
-                <div className="farm-portfolio-meta">
-                  Risk: {formatDecimal(farmRiskAverage(farm))}/5 | Revenue:{" "}
-                  {inferProjectedRevenue(farm) > 0 ? formatMoney(inferProjectedRevenue(farm), farm.finance.currency || "UGX") : "--"}
-                </div>
-              </button>
-              <div className="farm-portfolio-actions">
-                <button
-                  className="btn ghost tiny grik-icon-btn"
-                  type="button"
-                  onClick={() => markPrimaryFarm(farm.id)}
-                  title="Set as primary farm"
-                  aria-label="Set as primary farm"
-                >
-                  <Icon name="shield" size={13} />
+        <div className="fw-farm-list">
+          {farms.map((farm) => {
+            const revenue = inferProjectedRevenue(farm);
+            return (
+              <div key={farm.id} className={`fw-farm-row${farm.id === activeFarmId ? " active" : ""}`}>
+                <button className="fw-farm-pick" type="button" onClick={() => setActiveFarmId(farm.id)}>
+                  <span className="fw-farm-name">
+                    {farm.name || "Unnamed farm"}
+                    {farm.isPrimary ? <span className="fw-badge">primary</span> : null}
+                  </span>
+                  <span className="fw-farm-sub">
+                    {[farm.parish, farm.district].filter(Boolean).join(", ") || "Location not set"} · {farm.crops.length} crop
+                    {farm.crops.length === 1 ? "" : "s"}
+                    {revenue > 0 ? ` · ${formatMoney(revenue, farm.finance.currency || "UGX")}` : ""}
+                    {farmRiskAverage(farm) != null ? ` · risk ${formatDecimal(farmRiskAverage(farm))}/5` : ""}
+                  </span>
                 </button>
-                <button
-                  className="btn ghost tiny grik-icon-btn"
-                  type="button"
-                  onClick={() => removeFarm(farm.id)}
-                  disabled={farms.length <= 1}
-                  title="Remove farm"
-                  aria-label="Remove farm"
-                >
-                  <Icon name="trash" size={13} />
-                </button>
+                <div className="fw-farm-row-actions">
+                  {!farm.isPrimary ? (
+                    <button
+                      className="fw-icon-btn"
+                      type="button"
+                      onClick={() => markPrimaryFarm(farm.id)}
+                      title="Set as primary farm"
+                      aria-label={`Set ${farm.name || "farm"} as primary`}
+                    >
+                      <Icon name="shield" size={13} />
+                    </button>
+                  ) : null}
+                  <button
+                    className="fw-icon-btn danger"
+                    type="button"
+                    onClick={() => removeFarm(farm.id)}
+                    disabled={farms.length <= 1}
+                    title={farms.length <= 1 ? "You need at least one farm" : "Remove farm"}
+                    aria-label={`Remove ${farm.name || "farm"}`}
+                  >
+                    <Icon name="trash" size={13} />
+                  </button>
+                </div>
               </div>
-            </article>
-          ))}
+            );
+          })}
         </div>
       </section>
-
-      {activeFarm ? (
-        <div className="farmer-dashboard-grid">
-          <section className="farmer-card">
-            <div className="farmer-card-header">
-              <div>
-                <div className="label">Active farm</div>
-                <h3>{activeFarm.name || "Current farm overview"}</h3>
-              </div>
-              <NavLink to="/dashboard/farm/manage" className="btn small">
-                <Icon name="farm" size={14} />
-                Manage farm
-              </NavLink>
-            </div>
-
-            <div className="farm-kpi-grid">
-              <article className="farm-kpi-card">
-                <div className="label">Readiness</div>
-                <strong>{activeFarmReadinessScore}/5</strong>
-              </article>
-              <article className="farm-kpi-card">
-                <div className="label">Crop mix</div>
-                <strong>{activeFarm.crops.length || "--"}</strong>
-              </article>
-              <article className="farm-kpi-card">
-                <div className="label">Water access</div>
-                <strong>{activeFarm.hasWaterAccess ? "Available" : "Not tracked"}</strong>
-              </article>
-              <article className="farm-kpi-card">
-                <div className="label">Last planting</div>
-                <strong>{activeFarm.lastPlantingDate || "--"}</strong>
-              </article>
-            </div>
-
-            <div className="farmer-side-summary">
-              {activeFarmReadinessItems.map((item) => (
-                <div key={item.label} className="farmer-side-summary-item">
-                  <span>{item.label}</span>
-                  <strong>{item.ready ? "Ready" : "Pending"}</strong>
-                </div>
-              ))}
-            </div>
-          </section>
-
-          <section className="farmer-card">
-            <div className="farmer-card-header">
-              <div>
-                <div className="label">Decision support</div>
-                <h3>Priority actions</h3>
-              </div>
-              <NavLink to="/dashboard/farm/settings" className="btn ghost small">
-                <Icon name="services" size={14} />
-                Settings
-              </NavLink>
-            </div>
-
-            <div className="farm-insight-grid">
-              {activeFarmInsights.slice(0, 4).map((insight) => (
-                <article key={insight.id} className={`farm-insight-card ${insight.level}`}>
-                  <div className="farm-insight-heading">
-                    <strong>{insight.title}</strong>
-                    <span className={`farm-insight-badge ${insight.level}`}>{insight.level}</span>
-                  </div>
-                  <p>{insight.detail}</p>
-                  <div className="farm-insight-action">{insight.action}</div>
-                </article>
-              ))}
-            </div>
-          </section>
-        </div>
-      ) : null}
     </>
   );
 }

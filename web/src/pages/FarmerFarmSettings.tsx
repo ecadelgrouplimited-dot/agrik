@@ -1,5 +1,4 @@
 import { useOutletContext } from "react-router-dom";
-import { Icon } from "../components/Visuals";
 import { type FarmerFarmWorkspaceContext } from "./FarmerFarm";
 
 export default function FarmerFarmSettings() {
@@ -7,17 +6,9 @@ export default function FarmerFarmSettings() {
 
   return (
     <>
-      <section className="farmer-card">
-        <div className="farmer-card-header">
-          <div className="section-title-with-icon">
-            <span className="section-icon">
-              <Icon name="services" size={18} />
-            </span>
-            <div>
-              <div className="label">Farmer settings</div>
-              <h3>Channels, alerts, and profile defaults</h3>
-            </div>
-          </div>
+      <section className="fw-panel">
+        <div className="fw-panel-head">
+          <h2>Channels and defaults</h2>
         </div>
 
         <div className="farmer-form-grid">
@@ -63,17 +54,9 @@ export default function FarmerFarmSettings() {
         </button>
       </section>
 
-      <section className="farmer-card">
-        <div className="farmer-card-header">
-          <div className="section-title-with-icon">
-            <span className="section-icon">
-              <Icon name="spark" size={18} />
-            </span>
-            <div>
-              <div className="label">How defaults work</div>
-              <h3>What updates with the primary farm</h3>
-            </div>
-          </div>
+      <section className="fw-panel">
+        <div className="fw-panel-head">
+          <h2>How defaults work</h2>
         </div>
         <ul className="grik-stack-list">
           <li>The primary farm remains the source of truth for synced district and parish values on save.</li>

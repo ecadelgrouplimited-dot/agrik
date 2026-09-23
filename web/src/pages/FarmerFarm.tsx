@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { NavLink, Outlet, useLocation } from "react-router-dom";
+import { NavLink, Outlet } from "react-router-dom";
 import { Icon } from "../components/Visuals";
 import { api } from "../lib/api";
 
@@ -435,10 +435,10 @@ function isFarmDraftEmpty(farm: FarmUnit | null): boolean {
 }
 
 const farmSections = [
-  { label: "Farm Home", path: "/dashboard/farm", icon: "overview" as const, subtitle: "Portfolio + switcher" },
-  { label: "Create Farm", path: "/dashboard/farm/create", icon: "plus" as const, subtitle: "Start a clean record" },
-  { label: "Manage Farm", path: "/dashboard/farm/manage", icon: "farm" as const, subtitle: "Edit selected farm" },
-  { label: "Farm Settings", path: "/dashboard/farm/settings", icon: "services" as const, subtitle: "Alerts + defaults" },
+  { label: "Overview", path: "/dashboard/farm", icon: "overview" as const, subtitle: "Portfolio + switcher" },
+  { label: "Add farm", path: "/dashboard/farm/create", icon: "plus" as const, subtitle: "Start a clean record" },
+  { label: "Edit farm", path: "/dashboard/farm/manage", icon: "farm" as const, subtitle: "Edit selected farm" },
+  { label: "Settings", path: "/dashboard/farm/settings", icon: "services" as const, subtitle: "Alerts + defaults" },
 ];
 
 export type FarmerFarmWorkspaceContext = {
@@ -491,7 +491,6 @@ export type FarmerFarmWorkspaceContext = {
 };
 
 export default function FarmerFarm() {
-  const location = useLocation();
   const [settings, setSettings] = useState<SettingsForm>(defaultSettings);
   const [farms, setFarms] = useState<FarmUnit[]>([]);
   const [activeFarmId, setActiveFarmId] = useState("");
@@ -1360,11 +1359,6 @@ export default function FarmerFarm() {
     }
   };
 
-  const currentSection = useMemo(
-    () => farmSections.find((item) => (item.path === "/dashboard/farm" ? location.pathname === item.path : location.pathname.startsWith(item.path))) ?? farmSections[0],
-    [location.pathname]
-  );
-
   const contextValue: FarmerFarmWorkspaceContext = {
     settings,
     farms,
@@ -1417,82 +1411,58 @@ export default function FarmerFarm() {
   if (loading) return <section className="farmer-page">Loading farm portfolio...</section>;
 
   return (
-    <section className="farmer-page farm-workspace-shell">
-      <div className="farmer-page-header farmer-command-header">
-        <div className="section-title-with-icon">
-          <span className="section-icon">
-            <Icon name="farm" size={18} />
+    <section className="farmer-page fw">
+      {/* One bar for the whole workspace: which farm, which view, and the two actions.
+          The page title already lives in the dashboard topbar, so it is not repeated here. */}
+      <div className="fw-bar">
+        <label className="fw-farm">
+          <span className="fw-farm-label">Farm</span>
+          <select value={activeFarmId} onChange={(event) => setActiveFarmId(event.target.value)} aria-label="Active farm">
+            {farms.map((farm) => (
+              <option key={farm.id} value={farm.id}>
+                {farm.name || "Unnamed farm"}
+                {farm.isPrimary ? " (primary)" : ""}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        {activeFarm ? (
+          <span className="fw-farm-meta">
+            {[activeFarm.parish, activeFarm.district].filter(Boolean).join(", ") || "Location not set"}
+            {activeFarm.crops.length ? ` · ${activeFarm.crops.length} crop${activeFarm.crops.length === 1 ? "" : "s"}` : ""}
           </span>
-          <div>
-            <div className="label">Portfolio, create &amp; manage</div>
-            <h1>Farm workspace</h1>
-          </div>
-        </div>
-        <div className="farmer-command-actions">
-          <button className="btn ghost small" type="button" onClick={() => setIsHelpOpen(true)}>
-            How to use
+        ) : null}
+
+        <nav className="fw-tabs" aria-label="Farm workspace views">
+          {farmSections.map((item) => (
+            <NavLink
+              key={item.path}
+              to={item.path}
+              end={item.path === "/dashboard/farm"}
+              className={({ isActive }) => `fw-tab${isActive ? " active" : ""}`}
+              title={item.subtitle}
+            >
+              {item.label}
+            </NavLink>
+          ))}
+        </nav>
+
+        <div className="fw-actions">
+          <button className="fw-icon-btn" type="button" onClick={() => setIsHelpOpen(true)} title="How to use" aria-label="How to use">
+            ?
           </button>
           <button className="btn ghost small" type="button" onClick={addFarm}>
-            <Icon name="plus" size={14} />
+            <Icon name="plus" size={13} />
             New farm
           </button>
           <button className="btn small" type="button" onClick={handleSave} disabled={saving}>
-            <Icon name="send" size={14} />
-            {saving ? "Saving..." : "Save workspace"}
+            {saving ? "Saving..." : "Save"}
           </button>
         </div>
       </div>
 
       {(message || error) && <p className={`status ${error ? "error" : ""}`}>{error ?? message}</p>}
-
-      <section className="farmer-card farmer-command-hero">
-        <div className="farmer-command-hero-copy">
-          <div className="label">{currentSection.subtitle}</div>
-          <h3>{activeFarm ? `${activeFarm.name || "Selected farm"} is active` : "Select or create a farm"}</h3>
-          <div className="farmer-chip-row">
-            <span className="chip">Farms: {farms.length}</span>
-            <span className="chip">Active readiness: {activeFarm ? `${activeFarmReadinessScore}/5` : "--"}</span>
-            <span className="chip">Risk avg: {portfolioRiskScore != null ? `${portfolioRiskScore.toFixed(1)} / 5` : "--"}</span>
-          </div>
-        </div>
-        <div className="farmer-command-hero-side">
-          <article className="farmer-command-mini-card">
-            <span className="label">Selected farm</span>
-            <strong>{activeFarm?.name || "No farm selected"}</strong>
-            <span className="muted">{activeFarm ? [activeFarm.parish, activeFarm.district].filter(Boolean).join(", ") || "Location not set" : "Choose a farm below"}</span>
-          </article>
-          <article className="farmer-command-mini-card">
-            <span className="label">Portfolio margin</span>
-            <strong>{portfolioMargin !== 0 ? formatMoney(portfolioMargin, primaryCurrency) : "--"}</strong>
-            <span className="muted">Revenue minus planned cost</span>
-          </article>
-        </div>
-      </section>
-
-      <section className="farmer-card dashboard-subnav-bar">
-        <div className="dashboard-subnav-picker">
-          <label className="field">
-            Active farm
-            <select value={activeFarmId} onChange={(event) => setActiveFarmId(event.target.value)}>
-              {farms.map((farm) => (
-                <option key={farm.id} value={farm.id}>
-                  {farm.name || "Unnamed farm"}{farm.isPrimary ? " (Primary)" : ""}
-                </option>
-              ))}
-            </select>
-          </label>
-        </div>
-        <nav className="dashboard-subnav" aria-label="Farm workspace pages">
-          {farmSections.map((item) => (
-            <NavLink key={item.path} to={item.path} end={item.path === "/dashboard/farm"} className={({ isActive }) => `dashboard-subnav-link ${isActive ? "active" : ""}`} title={item.subtitle}>
-              <span className="nav-icon">
-                <Icon name={item.icon} size={15} />
-              </span>
-              <strong>{item.label}</strong>
-            </NavLink>
-          ))}
-        </nav>
-      </section>
 
       <Outlet context={contextValue} />
 

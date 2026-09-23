@@ -52,83 +52,79 @@ export default function FarmerFarmManage() {
 
   const [activeSection, setActiveSection] = useState<SectionKey>("identity");
 
+  const currency = activeFarm?.finance.currency || "UGX";
+  const seasonFigures: { label: string; value: string }[] = [];
+  if (activeProjectedRevenue > 0) seasonFigures.push({ label: "Projected revenue", value: formatMoney(activeProjectedRevenue, currency) });
+  if (activePlannedCost > 0) seasonFigures.push({ label: "Planned season cost", value: formatMoney(activePlannedCost, currency) });
+  if (activeExpectedMargin !== 0) seasonFigures.push({ label: "Expected margin", value: formatMoney(activeExpectedMargin, currency) });
+  if (breakEvenPrice != null) seasonFigures.push({ label: "Break-even price/kg", value: formatMoney(breakEvenPrice, currency) });
+  if (breakEvenYield != null) seasonFigures.push({ label: "Break-even yield (kg)", value: breakEvenYield.toFixed(0) });
+  if (activeFarmRiskScore != null) seasonFigures.push({ label: "Risk score", value: `${activeFarmRiskScore.toFixed(1)} / 5` });
+
+  const insightMeta: string[] = [];
+  if (activeCashRunway != null) insightMeta.push(`Cash runway: ${Math.max(activeCashRunway, 0).toFixed(2)}x season cost`);
+  if (activeCoverageRatio != null) insightMeta.push(`Coverage ratio: ${(Math.max(activeCoverageRatio, 0) * 100).toFixed(0)}% of expected revenue`);
+  if (activeFarmRiskScore != null) insightMeta.push(`Risk score: ${activeFarmRiskScore.toFixed(1)} / 5`);
+
+
   if (!activeFarm) {
     return <section className="farmer-card">No farm is selected for management.</section>;
   }
 
   return (
     <>
-      <section className="farmer-card">
-        <div className="farmer-card-header">
-          <div className="section-title-with-icon">
-            <span className="section-icon">
-              <Icon name="farm" size={18} />
-            </span>
-            <div>
-              <div className="label">Manage farm</div>
-              <h3>{activeFarm.name || "Farm details"}</h3>
-            </div>
-          </div>
-          {activeFarm.isPrimary ? <span className="pill">Primary planning farm</span> : null}
-        </div>
-
-        <nav className="dashboard-subnav farm-section-nav" aria-label="Farm details sections">
-          {SECTIONS.map((section) => (
-            <button
-              key={section.key}
-              type="button"
-              className={`dashboard-subnav-link ${activeSection === section.key ? "active" : ""}`}
-              onClick={() => setActiveSection(section.key)}
-              title={section.subtitle}
-            >
-              <strong>{section.label}</strong>
-            </button>
-          ))}
-        </nav>
-      </section>
+      {/* The workspace bar above already names the farm and its primary status,
+          so this row carries the section tabs alone. */}
+      <nav className="fw-subtabs" aria-label="Farm details sections">
+        {SECTIONS.map((section) => (
+          <button
+            key={section.key}
+            type="button"
+            className={`fw-subtab${activeSection === section.key ? " active" : ""}`}
+            onClick={() => setActiveSection(section.key)}
+            title={section.subtitle}
+          >
+            {section.label}
+          </button>
+        ))}
+      </nav>
 
       {activeSection === "identity" ? (
-      <section className="farmer-card" id="farm-identity">
-        <div className="farmer-card-header">
-          <div className="section-title-with-icon">
-            <span className="section-icon">
-              <Icon name="farm" size={18} />
-            </span>
-            <div>
-              <div className="label">Identity</div>
-              <h3>Core farm details</h3>
-            </div>
-          </div>
+      <section className="fw-panel" id="farm-identity">
+        <div className="fw-panel-head">
+          <h2>Core farm details</h2>
         </div>
 
-        <div className="farmer-dashboard-grid">
-          <div className="farm-kpi-grid">
-            <article className="farm-kpi-card">
-              <div className="label">Readiness</div>
-              <strong>{activeFarmReadinessScore}/5</strong>
-            </article>
-            <article className="farm-kpi-card">
-              <div className="label">Crop mix</div>
-              <strong>{activeFarm.crops.length || "--"}</strong>
-            </article>
-            <article className="farm-kpi-card">
-              <div className="label">Water access</div>
-              <strong>{activeFarm.hasWaterAccess ? "Available" : "Not tracked"}</strong>
-            </article>
-            <article className="farm-kpi-card">
-              <div className="label">Last planting</div>
-              <strong>{activeFarm.lastPlantingDate || "--"}</strong>
-            </article>
+        <div className="fw-stats">
+          <div className="fw-stat">
+            <span>Readiness</span>
+            <strong>{activeFarmReadinessScore}/5</strong>
           </div>
+          <div className="fw-stat">
+            <span>Crops</span>
+            <strong>{activeFarm.crops.length}</strong>
+          </div>
+          <div className="fw-stat">
+            <span>Water</span>
+            <strong>{activeFarm.hasWaterAccess ? "Yes" : "Not set"}</strong>
+          </div>
+          {activeFarm.lastPlantingDate ? (
+            <div className="fw-stat">
+              <span>Last planting</span>
+              <strong>{activeFarm.lastPlantingDate}</strong>
+            </div>
+          ) : null}
+        </div>
 
-          <div className="farmer-side-summary">
-            {activeFarmReadinessItems.map((item) => (
-              <div key={item.label} className="farmer-side-summary-item">
-                <span>{item.label}</span>
-                <strong>{item.ready ? "Ready" : "Pending"}</strong>
-              </div>
-            ))}
-          </div>
+        {/* The same readiness pills as the overview, rather than a second five-row list
+            repeating what the score above already says. */}
+        <div className="fw-readiness">
+          {activeFarmReadinessItems.map((item) => (
+            <span key={item.label} className={`fw-ready-pill${item.ready ? " done" : ""}`}>
+              {item.ready ? <Icon name="check-circle" size={12} /> : null}
+              {item.label}
+            </span>
+          ))}
         </div>
 
         <div className="farmer-form-grid">
@@ -145,7 +141,6 @@ export default function FarmerFarmManage() {
           <label className="field farmer-form-span">
             Crops grown
             <FarmerCropSelector options={cropOptions} selected={activeFarm.crops} onChange={(value) => onActiveFarmChange("crops", value)} />
-            <span className="field-note">Use the checkboxes to update the crop mix for this farm.</span>
           </label>
           <label className="field">
             Last planting date
@@ -190,17 +185,9 @@ export default function FarmerFarmManage() {
       ) : null}
 
       {activeSection === "expectations" ? (
-      <section className="farmer-card" id="farm-expectations">
-        <div className="farmer-card-header">
-          <div className="section-title-with-icon">
-            <span className="section-icon">
-              <Icon name="activity" size={18} />
-            </span>
-            <div>
-              <div className="label">Season expectations</div>
-              <h3>Yield, market, and outcome targets</h3>
-            </div>
-          </div>
+      <section className="fw-panel" id="farm-expectations">
+        <div className="fw-panel-head">
+          <h2>Yield and market targets</h2>
         </div>
 
         <div className="farmer-form-grid">
@@ -283,47 +270,25 @@ export default function FarmerFarmManage() {
           </label>
         </div>
 
-        <div className="farm-kpi-grid">
-          <article className="farm-kpi-card">
-            <div className="label">Projected revenue</div>
-            <strong>{activeProjectedRevenue > 0 ? formatMoney(activeProjectedRevenue, activeFarm.finance.currency || "UGX") : "--"}</strong>
-          </article>
-          <article className="farm-kpi-card">
-            <div className="label">Planned season cost</div>
-            <strong>{activePlannedCost > 0 ? formatMoney(activePlannedCost, activeFarm.finance.currency || "UGX") : "--"}</strong>
-          </article>
-          <article className="farm-kpi-card">
-            <div className="label">Expected margin</div>
-            <strong>{activeExpectedMargin !== 0 ? formatMoney(activeExpectedMargin, activeFarm.finance.currency || "UGX") : "--"}</strong>
-          </article>
-          <article className="farm-kpi-card">
-            <div className="label">Break-even price/kg</div>
-            <strong>{breakEvenPrice != null ? formatMoney(breakEvenPrice, activeFarm.finance.currency || "UGX") : "--"}</strong>
-          </article>
-          <article className="farm-kpi-card">
-            <div className="label">Break-even yield (kg)</div>
-            <strong>{breakEvenYield != null ? breakEvenYield.toFixed(0) : "--"}</strong>
-          </article>
-          <article className="farm-kpi-card">
-            <div className="label">Risk score</div>
-            <strong>{activeFarmRiskScore != null ? `${activeFarmRiskScore.toFixed(1)} / 5` : "--"}</strong>
-          </article>
-        </div>
+        {seasonFigures.length > 0 ? (
+          <div className="fw-stats">
+            {seasonFigures.map((figure) => (
+              <div key={figure.label} className="fw-stat">
+                <span>{figure.label}</span>
+                <strong>{figure.value}</strong>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="fw-panel-note">Fill in target yield and expected price to see revenue and break-even figures.</p>
+        )}
       </section>
       ) : null}
 
       {activeSection === "finance" ? (
-      <section className="farmer-card" id="farm-finance">
-        <div className="farmer-card-header">
-          <div className="section-title-with-icon">
-            <span className="section-icon">
-              <Icon name="finance" size={18} />
-            </span>
-            <div>
-              <div className="label">Finance management</div>
-              <h3>Budget, liquidity, and credit</h3>
-            </div>
-          </div>
+      <section className="fw-panel" id="farm-finance">
+        <div className="fw-panel-head">
+          <h2>Budget, liquidity, and credit</h2>
         </div>
 
         <div className="farmer-form-grid">
@@ -397,17 +362,9 @@ export default function FarmerFarmManage() {
       ) : null}
 
       {activeSection === "insurance" ? (
-      <section className="farmer-card" id="farm-insurance">
-        <div className="farmer-card-header">
-          <div className="section-title-with-icon">
-            <span className="section-icon">
-              <Icon name="shield" size={18} />
-            </span>
-            <div>
-              <div className="label">Insurance</div>
-              <h3>Protection and claim readiness</h3>
-            </div>
-          </div>
+      <section className="fw-panel" id="farm-insurance">
+        <div className="fw-panel-head">
+          <h2>Protection and claim readiness</h2>
         </div>
 
         <label className="toggle">
@@ -483,17 +440,9 @@ export default function FarmerFarmManage() {
       ) : null}
 
       {activeSection === "risk-operations" ? (
-      <section className="farmer-card" id="farm-risk-operations">
-        <div className="farmer-card-header">
-          <div className="section-title-with-icon">
-            <span className="section-icon">
-              <Icon name="climate" size={18} />
-            </span>
-            <div>
-              <div className="label">Risk and operations</div>
-              <h3>Preparedness, staffing, and execution</h3>
-            </div>
-          </div>
+      <section className="fw-panel" id="farm-risk-operations">
+        <div className="fw-panel-head">
+          <h2>Preparedness and staffing</h2>
         </div>
 
         <div className="farmer-form-grid">
@@ -637,40 +586,22 @@ export default function FarmerFarmManage() {
           </label>
           <label className="field farmer-form-span">
             Agroecology practices in use
-            <select
-              multiple
-              value={activeFarm.operations.agroecologyPractices}
-              onChange={(event) =>
-                onOperationsChange(
-                  "agroecologyPractices",
-                  Array.from(event.target.selectedOptions, (option) => option.value)
-                )
-              }
-            >
-              {AGROECOLOGY_PRACTICES.map((practice) => (
-                <option key={practice} value={practice}>
-                  {practice}
-                </option>
-              ))}
-            </select>
-            <span className="field-note">Track climate-smart and regenerative practices per farm.</span>
+            {/* A scrolling multi-select hid most of the list and its selection. Same chips as crops. */}
+            <FarmerCropSelector
+              options={[...AGROECOLOGY_PRACTICES]}
+              selected={activeFarm.operations.agroecologyPractices}
+              onChange={(value) => onOperationsChange("agroecologyPractices", value)}
+              ariaLabel="Agroecology practices in use"
+            />
           </label>
         </div>
       </section>
       ) : null}
 
       {activeSection === "intelligence" ? (
-      <section className="farmer-card" id="farm-intelligence">
-        <div className="farmer-card-header">
-          <div className="section-title-with-icon">
-            <span className="section-icon">
-              <Icon name="spark" size={18} />
-            </span>
-            <div>
-              <div className="label">Farm intelligence</div>
-              <h3>Priority actions from your live profile</h3>
-            </div>
-          </div>
+      <section className="fw-panel" id="farm-intelligence">
+        <div className="fw-panel-head">
+          <h2>Priority actions</h2>
         </div>
 
         <div className="farm-insight-grid">
@@ -686,11 +617,7 @@ export default function FarmerFarmManage() {
           ))}
         </div>
 
-        <div className="farm-insight-meta">
-          Cash runway: {activeCashRunway != null ? `${Math.max(activeCashRunway, 0).toFixed(2)}x season cost` : "--"} | Coverage ratio:{" "}
-          {activeCoverageRatio != null ? `${(Math.max(activeCoverageRatio, 0) * 100).toFixed(0)}% of expected revenue` : "--"} | Risk score:{" "}
-          {activeFarmRiskScore != null ? `${activeFarmRiskScore.toFixed(1)} / 5` : "--"}
-        </div>
+        {insightMeta.length > 0 ? <div className="farm-insight-meta">{insightMeta.join(" | ")}</div> : null}
       </section>
       ) : null}
     </>

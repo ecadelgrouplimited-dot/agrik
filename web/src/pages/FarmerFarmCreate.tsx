@@ -14,33 +14,12 @@ export default function FarmerFarmCreate() {
 
   return (
     <>
-      <section className="farmer-card farmer-command-hero farm-create-hero">
-        <div className="farmer-command-hero-copy">
-          <div className="label">Create farm</div>
-          <h3>Use a clean setup flow before moving into the full management page</h3>
-          <p className="muted">
-            This page focuses on identity, crop mix, and season targets. Use <strong>Create fresh draft</strong> whenever you want a new farm record instead of editing the selected one.
-          </p>
-        </div>
-        <div className="farmer-command-actions">
-          <button className="btn ghost small" type="button" onClick={addFarm}>
-            <Icon name="plus" size={14} />
-            Create fresh draft
+      <section className="fw-panel">
+        <div className="fw-panel-head">
+          <h2>{isActiveFarmEmpty ? "New farm" : `Editing ${activeFarm.name || "selected farm"}`}</h2>
+          <button className="fw-panel-link" type="button" onClick={addFarm}>
+            Start a blank farm instead
           </button>
-          <button className="btn small" type="button" onClick={handleSave} disabled={saving}>
-            <Icon name="send" size={14} />
-            {saving ? "Saving..." : "Save new farm"}
-          </button>
-        </div>
-      </section>
-
-      <section className="farmer-card">
-        <div className="farmer-card-header">
-          <div>
-            <div className="label">Selected draft</div>
-            <h3>{activeFarm.name || "New farm draft"}</h3>
-          </div>
-          <div className="farmer-inline-meta">{isActiveFarmEmpty ? "This looks like a fresh farm record." : "You are editing the currently selected farm."}</div>
         </div>
 
         <div className="farmer-form-grid">
@@ -81,7 +60,6 @@ export default function FarmerFarmCreate() {
           <label className="field farmer-form-span">
             Crops grown
             <FarmerCropSelector options={cropOptions} selected={activeFarm.crops} onChange={(value) => onActiveFarmChange("crops", value)} />
-            <span className="field-note">Tap or tick each crop you want to track on this farm.</span>
           </label>
           <label className="field farmer-form-span">
             Farm notes
@@ -100,15 +78,11 @@ export default function FarmerFarmCreate() {
         </label>
       </section>
 
-      <section className="farmer-card">
-        <div className="farmer-card-header">
-          <div>
-            <div className="label">Starter targets</div>
-            <h3>Capture the season plan before advanced setup</h3>
-          </div>
-          <NavLink to="/dashboard/farm/manage" className="btn ghost small">
-            <Icon name="farm" size={14} />
-            Open advanced fields
+      <section className="fw-panel">
+        <div className="fw-panel-head">
+          <h2>Season plan</h2>
+          <NavLink to="/dashboard/farm/manage" className="fw-panel-link">
+            Advanced fields
           </NavLink>
         </div>
 
