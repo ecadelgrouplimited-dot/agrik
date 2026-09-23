@@ -11896,11 +11896,6 @@ a {
     line-height: 1.25;
   }
 
-  .farmer-card-header .label,
-  .admin-card-header .label {
-    font-size: 9.5px;
-  }
-
   .farmer-card p,
   .admin-card p,
   .fw-panel p {
@@ -12191,10 +12186,22 @@ a {
     line-height: 1.3;
   }
 
-  /* The top action row stacked one button per line. */
+  /* A lone Refresh button was sitting centred in its own band. Keep the row tight
+     against the right edge, the way the desktop layout reads. */
   .farmer-page-header,
-  .farmer-page-header.header-actions-only {
+  .farmer-page-header.header-actions-only,
+  .admin-page-header.actions-only {
     align-items: center;
+    justify-content: flex-end;
+    margin: 0;
+  }
+
+  /* Card headers carried an eyebrow above the title that restated it — "TIMELINE
+     FILTERS / Search and narrow activity". One line is enough on a phone. */
+  .farmer-card-header .label,
+  .admin-card-header .label,
+  .farmer-card-header > div > .label {
+    display: none;
   }
 
   .farmer-page-header h1 {
