@@ -24,7 +24,7 @@ type AuthState = {
   user: AuthUser | null;
   loading: boolean;
   error: string | null;
-  login: (phone: string, password?: string | null) => Promise<AuthActionResult>;
+  login: (identifier: string, password?: string | null) => Promise<AuthActionResult>;
   verify: (email: string, code: string) => Promise<void>;
   register: (payload: AuthRegisterPayload) => Promise<AuthActionResult>;
   resendVerificationCode: (email: string) => Promise<AuthActionResult>;
@@ -60,9 +60,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     loadUser();
   }, [loadUser]);
 
-  const login = useCallback(async (phone: string, password?: string | null) => {
+  const login = useCallback(async (identifier: string, password?: string | null) => {
     setError(null);
-    const result = await api.authLogin({ phone, password: password ?? undefined });
+    const result = await api.authLogin({ identifier, password: password ?? undefined });
     if (result.token && result.user) {
       setToken(result.token);
       setUser(result.user);

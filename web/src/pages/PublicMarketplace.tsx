@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { api } from "../lib/api";
+import { Icon } from "../components/Visuals";
 import {
   MarketListingRecord,
   asRecord,
@@ -30,6 +31,10 @@ type PublicService = {
 };
 
 type FeedView = "all" | "listings" | "services";
+type SortKey = "newest" | "price_asc" | "price_desc" | "media_desc";
+type RoleFilter = "all" | "seller" | "buyer";
+
+const DENSITY_KEY = "agrik_marketplace_density";
 
 function normalizeService(raw: unknown): PublicService | null {
   const row = asRecord(raw);
@@ -58,22 +63,61 @@ function joinLocation(parish: string, district: string) {
   return [parish, district].filter(Boolean).join(", ") || "Location unavailable";
 }
 
+/** Top values with counts, so the quick filters always reflect what is actually listed right now. */
+function topFacets(values: string[], limit: number): { value: string; count: number }[] {
+  const counts = new Map<string, number>();
+  for (const raw of values) {
+    const value = raw.trim();
+    if (!value) continue;
+    counts.set(value, (counts.get(value) ?? 0) + 1);
+  }
+  return Array.from(counts.entries())
+    .map(([value, count]) => ({ value, count }))
+    .sort((a, b) => b.count - a.count || a.value.localeCompare(b.value))
+    .slice(0, limit);
+}
+
 export default function PublicMarketplace() {
   const { user } = useAuth();
+  const [params, setParams] = useSearchParams();
+
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [listings, setListings] = useState<MarketListingRecord[]>([]);
   const [services, setServices] = useState<PublicService[]>([]);
-  const [feedView, setFeedView] = useState<FeedView>("all");
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [search, setSearch] = useState("");
-  const [filterCrop, setFilterCrop] = useState("");
-  const [filterDistrict, setFilterDistrict] = useState("");
-  const [filterRole, setFilterRole] = useState<"all" | "seller" | "buyer">("all");
-  const [minPrice, setMinPrice] = useState("");
-  const [maxPrice, setMaxPrice] = useState("");
-  const [mediaOnly, setMediaOnly] = useState(false);
-  const [sortBy, setSortBy] = useState<"newest" | "price_asc" | "price_desc" | "media_desc">("newest");
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  // Uploaded media can go missing; fall back to the placeholder instead of a broken image.
+  const [brokenMedia, setBrokenMedia] = useState<Set<number>>(new Set());
+  const [density, setDensity] = useState<"comfortable" | "compact">(() =>
+    localStorage.getItem(DENSITY_KEY) === "compact" ? "compact" : "comfortable"
+  );
+
+  // Filters live in the URL so a filtered marketplace view can be shared or bookmarked.
+  const search = params.get("q") ?? "";
+  const filterCrop = params.get("crop") ?? "";
+  const filterDistrict = params.get("where") ?? "";
+  const filterRole = (params.get("role") as RoleFilter) || "all";
+  const minPrice = params.get("min") ?? "";
+  const maxPrice = params.get("max") ?? "";
+  const mediaOnly = params.get("media") === "1";
+  const sortBy = (params.get("sort") as SortKey) || "newest";
+  const feedView = (params.get("view") as FeedView) || "all";
+
+  const setParam = (key: string, value: string | null) => {
+    setParams(
+      (current) => {
+        const next = new URLSearchParams(current);
+        if (!value) next.delete(key);
+        else next.set(key, value);
+        return next;
+      },
+      { replace: true }
+    );
+  };
+
+  useEffect(() => {
+    localStorage.setItem(DENSITY_KEY, density);
+  }, [density]);
 
   useEffect(() => {
     setLoading(true);
@@ -107,7 +151,14 @@ export default function PublicMarketplace() {
         const target = filterDistrict.trim().toLowerCase();
         return item.location.district.toLowerCase().includes(target) || item.location.parish.toLowerCase().includes(target);
       })
-      .filter((item) => (!query ? true : [item.crop, item.grade, item.description, item.location.district, item.location.parish].join(" ").toLowerCase().includes(query)))
+      .filter((item) =>
+        !query
+          ? true
+          : [item.crop, item.grade, item.description, item.location.district, item.location.parish]
+              .join(" ")
+              .toLowerCase()
+              .includes(query)
+      )
       .filter((item) => (mediaOnly ? item.mediaUrls.length > 0 : true))
       .filter((item) => (min != null ? (item.price ?? Number.NEGATIVE_INFINITY) >= min : true))
       .filter((item) => (max != null ? (item.price ?? Number.POSITIVE_INFINITY) <= max : true));
@@ -133,156 +184,389 @@ export default function PublicMarketplace() {
       })
       .filter((item) => (min != null ? (item.price ?? Number.NEGATIVE_INFINITY) >= min : true))
       .filter((item) => (max != null ? (item.price ?? Number.POSITIVE_INFINITY) <= max : true))
-      .filter((item) => (!query ? true : [item.serviceType, item.description, item.district, item.parish].join(" ").toLowerCase().includes(query)))
+      .filter((item) =>
+        !query ? true : [item.serviceType, item.description, item.district, item.parish].join(" ").toLowerCase().includes(query)
+      )
       .slice(0, 80);
   }, [filterDistrict, maxPrice, mediaOnly, minPrice, search, services]);
 
-  const districts = useMemo(
-    () => Array.from(new Set([...filteredListings.map((item) => item.location.district), ...filteredServices.map((item) => item.district)].filter(Boolean))).slice(0, 5),
-    [filteredListings, filteredServices]
+  const cropFacets = useMemo(() => topFacets(listings.map((item) => item.crop), 8), [listings]);
+  const districtFacets = useMemo(
+    () => topFacets([...listings.map((item) => item.location.district), ...services.map((item) => item.district)], 8),
+    [listings, services]
   );
-  const activeFilterCount = [search, filterCrop, filterDistrict, minPrice, maxPrice].filter((item) => item.trim()).length + (filterRole !== "all" ? 1 : 0) + (mediaOnly ? 1 : 0) + (sortBy !== "newest" ? 1 : 0);
-  const mediaBackedPct = listings.length ? `${Math.round((listings.filter((item) => item.mediaUrls.length > 0).length / listings.length) * 100)}%` : "0%";
+
+  const activeChips = useMemo(() => {
+    const chips: { key: string; label: string; onClear: () => void }[] = [];
+    if (search.trim()) chips.push({ key: "q", label: `"${search.trim()}"`, onClear: () => setParam("q", null) });
+    if (filterCrop.trim()) chips.push({ key: "crop", label: filterCrop.trim(), onClear: () => setParam("crop", null) });
+    if (filterDistrict.trim()) chips.push({ key: "where", label: filterDistrict.trim(), onClear: () => setParam("where", null) });
+    if (filterRole !== "all")
+      chips.push({ key: "role", label: filterRole === "buyer" ? "Buyer demand" : "Seller supply", onClear: () => setParam("role", null) });
+    if (minPrice.trim()) chips.push({ key: "min", label: `Min ${minPrice.trim()}`, onClear: () => setParam("min", null) });
+    if (maxPrice.trim()) chips.push({ key: "max", label: `Max ${maxPrice.trim()}`, onClear: () => setParam("max", null) });
+    if (mediaOnly) chips.push({ key: "media", label: "Has media", onClear: () => setParam("media", null) });
+    if (sortBy !== "newest") {
+      const labels: Record<SortKey, string> = {
+        newest: "Newest",
+        price_asc: "Price low to high",
+        price_desc: "Price high to low",
+        media_desc: "Most media",
+      };
+      chips.push({ key: "sort", label: labels[sortBy], onClear: () => setParam("sort", null) });
+    }
+    return chips;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [search, filterCrop, filterDistrict, filterRole, minPrice, maxPrice, mediaOnly, sortBy]);
+
+  const totalResults = filteredListings.length + filteredServices.length;
+  const mediaBackedPct = listings.length
+    ? Math.round((listings.filter((item) => item.mediaUrls.length > 0).length / listings.length) * 100)
+    : 0;
 
   function resetFilters() {
-    setSearch("");
-    setFilterCrop("");
-    setFilterDistrict("");
-    setFilterRole("all");
-    setMinPrice("");
-    setMaxPrice("");
-    setMediaOnly(false);
-    setSortBy("newest");
+    setParams(
+      (current) => {
+        const next = new URLSearchParams();
+        const view = current.get("view");
+        if (view) next.set("view", view);
+        return next;
+      },
+      { replace: true }
+    );
   }
 
+  const showListings = feedView !== "services";
+  const showServices = feedView !== "listings";
+
   return (
-    <section className="market-hub-shell">
-      <div className={`market-hub-backdrop${sidebarOpen ? " open" : ""}`} onClick={() => setSidebarOpen(false)} />
-      <aside className={`market-hub-sidebar${sidebarOpen ? " open" : ""}`}>
-        <div className="market-hub-sidebar-head">
-          <p className="eyebrow">Marketplace navigator</p>
-          <h2>Browse marketplace</h2>
-          <p>Filter produce, buyers, and services.</p>
-          <button type="button" className="market-hub-close" onClick={() => setSidebarOpen(false)}>Close</button>
+    <section className={`mk mk-${density}`}>
+      <header className="mk-bar">
+        <div className="mk-bar-lead">
+          <h1>Marketplace</h1>
+          <p>
+            {loading ? (
+              "Loading live listings..."
+            ) : (
+              <>
+                <strong>{filteredListings.length}</strong> produce · <strong>{filteredServices.length}</strong> services
+                {listings.length > 0 ? <> · {mediaBackedPct}% with media</> : null}
+              </>
+            )}
+          </p>
         </div>
-        <div className="market-hub-segmented">
-          <button type="button" className={feedView === "all" ? "active" : ""} onClick={() => setFeedView("all")}>All</button>
-          <button type="button" className={feedView === "listings" ? "active" : ""} onClick={() => setFeedView("listings")}>Produce</button>
-          <button type="button" className={feedView === "services" ? "active" : ""} onClick={() => setFeedView("services")}>Services</button>
-        </div>
-        <nav className="market-hub-nav">
-          <a href="#market-overview" onClick={() => setSidebarOpen(false)}><span>Overview</span><strong>{filteredListings.length + filteredServices.length}</strong></a>
-          <a href="#market-listings" onClick={() => setSidebarOpen(false)}><span>Produce feed</span><strong>{filteredListings.length}</strong></a>
-          <a href="#market-services" onClick={() => setSidebarOpen(false)}><span>Service network</span><strong>{filteredServices.length}</strong></a>
-          <a href="#market-guide" onClick={() => setSidebarOpen(false)}><span>Access rules</span><strong>{user ? "Open" : "Locked"}</strong></a>
-        </nav>
-        <section className="market-filter-panel">
-          <div className="market-filter-panel-head">
-            <div><span className="label">Filter stack</span><h3>Filters</h3></div>
-            <button type="button" className="market-link-button" onClick={resetFilters}>Reset</button>
-          </div>
-          <label className="field market-filter-field"><span>Search</span><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Maize, sorghum, transport..." /></label>
-          <div className="market-filter-two-up">
-            <label className="field market-filter-field"><span>Crop</span><input value={filterCrop} onChange={(event) => setFilterCrop(event.target.value)} placeholder="Beans" /></label>
-            <label className="field market-filter-field"><span>Role</span><select value={filterRole} onChange={(event) => setFilterRole(event.target.value as "all" | "seller" | "buyer")}><option value="all">All listings</option><option value="seller">Seller supply</option><option value="buyer">Buyer demand</option></select></label>
-          </div>
-          <label className="field market-filter-field"><span>District or parish</span><input value={filterDistrict} onChange={(event) => setFilterDistrict(event.target.value)} placeholder="Gulu" /></label>
-          <div className="market-filter-two-up">
-            <label className="field market-filter-field"><span>Min price</span><input type="number" value={minPrice} onChange={(event) => setMinPrice(event.target.value)} placeholder="1000" /></label>
-            <label className="field market-filter-field"><span>Max price</span><input type="number" value={maxPrice} onChange={(event) => setMaxPrice(event.target.value)} placeholder="5000" /></label>
-          </div>
-          <label className="field market-filter-field"><span>Sort by</span><select value={sortBy} onChange={(event) => setSortBy(event.target.value as "newest" | "price_asc" | "price_desc" | "media_desc")}><option value="newest">Newest</option><option value="price_asc">Price low to high</option><option value="price_desc">Price high to low</option><option value="media_desc">Most media</option></select></label>
-          <label className="market-inline-check"><input type="checkbox" checked={mediaOnly} onChange={(event) => setMediaOnly(event.target.checked)} /><span>Media evidence only</span></label>
-        </section>
-        <section className={`market-access-panel${user ? " unlocked" : ""}`}>
-          <span className="label">{user ? "Signed in" : "Contact access"}</span>
-          <h3>{user ? "Contact details are available." : "Sign in to view contact details."}</h3>
-          <p>{user ? "Call and WhatsApp actions are shown on listings." : "Phone, WhatsApp, and SMS are hidden for guests."}</p>
-          {!user ? <Link className="btn" to="/auth">Sign in</Link> : null}
-        </section>
-      </aside>
 
-      <div className="market-hub-main">
-        <section id="market-overview" className="market-hub-hero">
-          <div className="market-hub-hero-copy">
-            <p className="eyebrow">Marketplace</p>
-            <h1>Buy, sell, and find services.</h1>
-            <p className="market-hub-lead">Browse produce, buyer demand, and service listings in one place.</p>
-            <div className="cta-row">
-              <a className="btn" href="#market-listings">Browse produce</a>
-              <a className="btn ghost" href="#market-services">View services</a>
-              <button type="button" className="btn ghost market-mobile-filters" onClick={() => setSidebarOpen(true)}>Filters and navigation</button>
+        <div className="mk-search">
+          <Icon name="market" size={15} />
+          <input
+            value={search}
+            onChange={(event) => setParam("q", event.target.value || null)}
+            placeholder="Search maize, transport, Gulu..."
+            aria-label="Search the marketplace"
+          />
+          {search ? (
+            <button type="button" onClick={() => setParam("q", null)} aria-label="Clear search">
+              ×
+            </button>
+          ) : null}
+        </div>
+
+        <div className="mk-bar-actions">
+          <div className="mk-segmented" role="tablist" aria-label="Marketplace view">
+            {([
+              ["all", "All"],
+              ["listings", "Produce"],
+              ["services", "Services"],
+            ] as const).map(([value, label]) => (
+              <button
+                key={value}
+                type="button"
+                role="tab"
+                aria-selected={feedView === value}
+                className={feedView === value ? "active" : ""}
+                onClick={() => setParam("view", value === "all" ? null : value)}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+
+          <select
+            className="mk-select"
+            value={sortBy}
+            onChange={(event) => setParam("sort", event.target.value === "newest" ? null : event.target.value)}
+            aria-label="Sort results"
+          >
+            <option value="newest">Newest</option>
+            <option value="price_asc">Price ↑</option>
+            <option value="price_desc">Price ↓</option>
+            <option value="media_desc">Most media</option>
+          </select>
+
+          <button
+            type="button"
+            className={`mk-icon-btn${filtersOpen ? " active" : ""}`}
+            onClick={() => setFiltersOpen((open) => !open)}
+            title="Filters"
+            aria-label="Toggle filters"
+          >
+            <Icon name="settings" size={15} />
+            {activeChips.length > 0 ? <span className="mk-badge">{activeChips.length}</span> : null}
+          </button>
+
+          <button
+            type="button"
+            className="mk-icon-btn"
+            onClick={() => setDensity((current) => (current === "compact" ? "comfortable" : "compact"))}
+            title={density === "compact" ? "Comfortable view" : "Compact view"}
+            aria-label={density === "compact" ? "Switch to comfortable view" : "Switch to compact view"}
+          >
+            <Icon name={density === "compact" ? "listings" : "overview"} size={15} />
+          </button>
+        </div>
+      </header>
+
+      {activeChips.length > 0 ? (
+        <div className="mk-chipbar">
+          {activeChips.map((chip) => (
+            <button key={chip.key} type="button" className="mk-chip active" onClick={chip.onClear} title="Remove filter">
+              {chip.label}
+              <span aria-hidden="true">×</span>
+            </button>
+          ))}
+          <button type="button" className="mk-link" onClick={resetFilters}>
+            Clear all
+          </button>
+        </div>
+      ) : null}
+
+      {filtersOpen ? (
+        <div className="mk-filters">
+          <div className="mk-filter-grid">
+            <label className="mk-field">
+              <span>Crop</span>
+              <input value={filterCrop} onChange={(event) => setParam("crop", event.target.value || null)} placeholder="Beans" />
+            </label>
+            <label className="mk-field">
+              <span>District or parish</span>
+              <input value={filterDistrict} onChange={(event) => setParam("where", event.target.value || null)} placeholder="Gulu" />
+            </label>
+            <label className="mk-field">
+              <span>Listing type</span>
+              <select value={filterRole} onChange={(event) => setParam("role", event.target.value === "all" ? null : event.target.value)}>
+                <option value="all">All listings</option>
+                <option value="seller">Seller supply</option>
+                <option value="buyer">Buyer demand</option>
+              </select>
+            </label>
+            <label className="mk-field">
+              <span>Min price</span>
+              <input type="number" value={minPrice} onChange={(event) => setParam("min", event.target.value || null)} placeholder="1000" />
+            </label>
+            <label className="mk-field">
+              <span>Max price</span>
+              <input type="number" value={maxPrice} onChange={(event) => setParam("max", event.target.value || null)} placeholder="5000" />
+            </label>
+            <label className="mk-check">
+              <input type="checkbox" checked={mediaOnly} onChange={(event) => setParam("media", event.target.checked ? "1" : null)} />
+              <span>Media evidence only</span>
+            </label>
+          </div>
+
+          {cropFacets.length > 0 || districtFacets.length > 0 ? (
+            <div className="mk-facets">
+              {cropFacets.length > 0 ? (
+                <div className="mk-facet-row">
+                  <span className="mk-facet-label">Crops</span>
+                  {cropFacets.map((facet) => (
+                    <button
+                      key={facet.value}
+                      type="button"
+                      className={`mk-chip${filterCrop === facet.value ? " active" : ""}`}
+                      onClick={() => setParam("crop", filterCrop === facet.value ? null : facet.value)}
+                    >
+                      {facet.value} <em>{facet.count}</em>
+                    </button>
+                  ))}
+                </div>
+              ) : null}
+              {districtFacets.length > 0 ? (
+                <div className="mk-facet-row">
+                  <span className="mk-facet-label">Places</span>
+                  {districtFacets.map((facet) => (
+                    <button
+                      key={facet.value}
+                      type="button"
+                      className={`mk-chip${filterDistrict === facet.value ? " active" : ""}`}
+                      onClick={() => setParam("where", filterDistrict === facet.value ? null : facet.value)}
+                    >
+                      {facet.value} <em>{facet.count}</em>
+                    </button>
+                  ))}
+                </div>
+              ) : null}
             </div>
-            <div className="market-hub-chip-row">{districts.length ? districts.map((district) => <span key={district}>{district}</span>) : <span>Live listings</span>}<span>{user ? "Signed in" : "Guest"}</span></div>
+          ) : null}
+        </div>
+      ) : null}
+
+      {error ? <p className="status error">{error}</p> : null}
+
+      {!loading && totalResults === 0 ? (
+        <div className="mk-empty">
+          <Icon name="market" size={26} />
+          <h3>{listings.length + services.length === 0 ? "Nothing is listed yet" : "No results match these filters"}</h3>
+          <p>
+            {listings.length + services.length === 0
+              ? "Produce and service listings will appear here as soon as they are published."
+              : "Try a wider price range, a different place, or clear the filters."}
+          </p>
+          {activeChips.length > 0 ? (
+            <button type="button" className="btn small" onClick={resetFilters}>
+              Clear filters
+            </button>
+          ) : null}
+        </div>
+      ) : null}
+
+      {showListings && (loading || filteredListings.length > 0) ? (
+        <section className="mk-section">
+          <div className="mk-section-head">
+            <h2>
+              Produce <span>{filteredListings.length}</span>
+            </h2>
+            <p>Seller supply and buyer demand</p>
           </div>
-          <div className="market-pulse-grid">
-            <article className="market-pulse-card"><span className="label">Produce listings</span><strong>{filteredListings.length}</strong><p>Buyers and sellers</p></article>
-            <article className="market-pulse-card"><span className="label">Service providers</span><strong>{filteredServices.length}</strong><p>Support and logistics</p></article>
-            <article className="market-pulse-card"><span className="label">With media</span><strong>{mediaBackedPct}</strong><p>Proof uploaded</p></article>
-            <article className="market-pulse-card"><span className="label">Filters</span><strong>{activeFilterCount}</strong><p>Now applied</p></article>
-          </div>
-        </section>
+          {loading ? (
+            <div className="mk-skeleton-grid">
+              {[0, 1, 2, 3].map((key) => (
+                <div key={key} className="mk-skeleton" />
+              ))}
+            </div>
+          ) : (
+            <div className="mk-grid">
+              {filteredListings.map((item) => {
+                const telHref = item.contactUnlocked ? buildTelHref(item.contactPhone) : null;
+                const whatsappHref = item.contactUnlocked
+                  ? buildWhatsappHref(
+                      item.contactWhatsapp || item.contactPhone,
+                      `Hello, I am interested in your ${item.crop} listing on AGRIK marketplace.`
+                    )
+                  : null;
+                return (
+                  <article key={item.id} className="mk-card">
+                    <Link className="mk-card-media" to={`/marketplace/listings/${item.id}`}>
+                      {item.mediaUrls[0] && !brokenMedia.has(item.id) ? (
+                        <img
+                          src={item.mediaUrls[0]}
+                          alt={`${item.crop} listing`}
+                          loading="lazy"
+                          onError={() => setBrokenMedia((current) => new Set(current).add(item.id))}
+                        />
+                      ) : (
+                        <span className="mk-card-noimg">No photo</span>
+                      )}
+                      <span className={`mk-tag ${item.role === "buyer" ? "buyer" : "seller"}`}>
+                        {item.role === "buyer" ? "Wanted" : "For sale"}
+                      </span>
+                      {item.mediaUrls.length > 1 ? <span className="mk-media-count">{item.mediaUrls.length}</span> : null}
+                    </Link>
 
-        <section className="market-results-strip">
-          <div><span className="label">Results</span><h2>{filteredListings.length} produce listings and {filteredServices.length} services</h2><p>{activeFilterCount ? "Filtered results" : "All open results"}</p></div>
-          <div className="market-results-actions"><button type="button" className="btn ghost" onClick={() => setSidebarOpen(true)}>Edit filters</button>{activeFilterCount ? <button type="button" className="btn ghost" onClick={resetFilters}>Clear filters</button> : null}</div>
-        </section>
-
-        {error ? <p className="status error">{error}</p> : null}
-
-        {feedView !== "services" ? (
-          <section id="market-listings" className="market-content-section">
-            <div className="market-section-head"><div><span className="label">Produce and demand listings</span><h2>Produce listings</h2></div><p>Open a listing to view full details.</p></div>
-            {loading ? <p>Loading produce listings...</p> : filteredListings.length === 0 ? <p>No public listings match your filters.</p> : (
-              <div className="market-card-grid">
-                {filteredListings.map((item) => {
-                  const telHref = item.contactUnlocked ? buildTelHref(item.contactPhone) : null;
-                  const whatsappHref = item.contactUnlocked ? buildWhatsappHref(item.contactWhatsapp || item.contactPhone, `Hello, I am interested in your ${item.crop} listing on AGRIK marketplace.`) : null;
-                  return (
-                    <article key={item.id} className="market-card">
-                      <Link className="market-card-media" to={`/marketplace/listings/${item.id}`}>
-                        {item.mediaUrls[0] ? <img src={item.mediaUrls[0]} alt={`${item.crop} listing evidence`} loading="lazy" /> : <div className="market-card-placeholder"><span>No media evidence</span></div>}
-                        <span className="market-card-media-pill">{item.mediaUrls.length ? `${item.mediaUrls.length} media` : "No media"}</span>
-                      </Link>
-                      <div className="market-card-body">
-                        <div className="market-card-topline"><span className={`market-role-tag ${item.role === "buyer" ? "buyer" : "seller"}`}>{item.role === "buyer" ? "Buyer demand" : "Seller supply"}</span><span className={`market-contact-state${item.contactUnlocked ? " unlocked" : ""}`}>{item.contactUnlocked ? "Contact" : "Sign in for contact"}</span></div>
-                        <div className="market-card-heading"><div><h3>{item.crop || "Listing"}</h3><p>{listingLocationLabel(item)}</p></div><strong>{item.price != null ? formatMoney(item.price, item.currency || "UGX") : "Negotiable"}</strong></div>
-                        <div className="market-card-metrics"><div><span>Quantity</span><strong>{item.quantity != null ? `${item.quantity} ${item.unit || "units"}` : "Open"}</strong></div><div><span>Grade</span><strong>{item.grade || "Mixed"}</strong></div><div><span>Published</span><strong>{formatDate(item.createdAt)}</strong></div></div>
-                        <p className="market-card-description">{compactText(item.description || (item.role === "buyer" ? "Buyer demand requirement posted." : "Seller supply listing posted."), 138)}</p>
-                        <div className="market-card-footer"><div className="market-card-publisher"><span className="label">Publisher</span><strong>{item.contactUnlocked ? item.contactName || "Marketplace contact" : "Hidden"}</strong></div><div className="market-card-actions"><Link className="btn ghost small" to={`/marketplace/listings/${item.id}`}>View details</Link>{telHref ? <a className="btn ghost small" href={telHref}>Call</a> : null}{whatsappHref ? <a className="btn ghost small" href={whatsappHref} target="_blank" rel="noreferrer">WhatsApp</a> : !item.contactUnlocked ? <Link className="btn small" to="/auth">Sign in</Link> : null}</div></div>
+                    <div className="mk-card-body">
+                      <div className="mk-card-title">
+                        <h3>{item.crop || "Listing"}</h3>
+                        <strong>{item.price != null ? formatMoney(item.price, item.currency || "UGX") : "Negotiable"}</strong>
                       </div>
-                    </article>
-                  );
-                })}
-              </div>
-            )}
-          </section>
-        ) : null}
-
-        {feedView !== "listings" ? (
-          <section id="market-services" className="market-content-section">
-            <div className="market-section-head"><div><span className="label">Service providers</span><h2>Service providers</h2></div><p>Support services across locations.</p></div>
-            {loading ? <p>Loading service providers...</p> : filteredServices.length === 0 ? <p>No public service providers match your filters.</p> : (
-              <div className="market-service-grid-neo">
-                {filteredServices.map((item) => (
-                  <article key={item.id} className="market-service-card">
-                    <div className="market-service-card-top"><div><span className="label">Service listing</span><h3>{item.serviceType || "Service"}</h3></div><span className="market-service-status">{item.status || "open"}</span></div>
-                    <p>{compactText(item.description || "Service listing", 150)}</p>
-                    <div className="market-service-meta"><strong>{item.price != null ? formatMoney(item.price, item.currency || "UGX") : "Quote on request"}</strong><span>{joinLocation(item.parish, item.district)}</span></div>
-                    <div className="market-service-proof"><span>{item.mediaUrls.length ? `${item.mediaUrls.length} proof files` : "No proof files"}</span>{item.mediaUrls[0] ? <a href={item.mediaUrls[0]} target="_blank" rel="noreferrer">Open evidence</a> : null}</div>
+                      <p className="mk-card-where">
+                        <Icon name="location" size={12} /> {listingLocationLabel(item)}
+                      </p>
+                      <p className="mk-card-meta">
+                        {item.quantity != null ? `${item.quantity} ${item.unit || "units"}` : "Open quantity"}
+                        {item.grade ? ` · ${item.grade}` : ""} · {formatDate(item.createdAt)}
+                      </p>
+                      {density === "comfortable" && item.description ? (
+                        <p className="mk-card-desc">{compactText(item.description, 96)}</p>
+                      ) : null}
+                      <div className="mk-card-actions">
+                        <Link className="btn ghost small" to={`/marketplace/listings/${item.id}`}>
+                          Details
+                        </Link>
+                        {telHref ? (
+                          <a className="btn ghost small" href={telHref}>
+                            Call
+                          </a>
+                        ) : null}
+                        {whatsappHref ? (
+                          <a className="btn ghost small" href={whatsappHref} target="_blank" rel="noreferrer">
+                            WhatsApp
+                          </a>
+                        ) : !item.contactUnlocked ? (
+                          <Link className="btn small" to="/auth">
+                            Sign in to contact
+                          </Link>
+                        ) : null}
+                      </div>
+                    </div>
                   </article>
-                ))}
-              </div>
-            )}
-          </section>
-        ) : null}
-
-        <section id="market-guide" className="market-guide-panel">
-          <div><span className="label">Contact access</span><h2>Listing details are open. Contact is for signed-in users.</h2><p>Browse first. Sign in when you are ready to contact the publisher.</p></div>
-          <div className="market-guide-steps"><article><strong>1</strong><h3>Browse</h3><p>Search listings and services.</p></article><article><strong>2</strong><h3>Review</h3><p>Open details, price, and media.</p></article><article><strong>3</strong><h3>Contact</h3><p>Sign in to reveal contact details.</p></article></div>
-          {!user ? <Link className="btn" to="/auth">Sign in</Link> : null}
+                );
+              })}
+            </div>
+          )}
         </section>
-      </div>
+      ) : null}
+
+      {showServices && (loading || filteredServices.length > 0) ? (
+        <section className="mk-section">
+          <div className="mk-section-head">
+            <h2>
+              Services <span>{filteredServices.length}</span>
+            </h2>
+            <p>Transport, inputs, and field support</p>
+          </div>
+          {loading ? null : (
+            <div className="mk-grid mk-grid-services">
+              {filteredServices.map((item) => (
+                <article key={item.id} className="mk-card mk-card-service">
+                  <div className="mk-card-body">
+                    <div className="mk-card-title">
+                      <h3>{item.serviceType || "Service"}</h3>
+                      <strong>{item.price != null ? formatMoney(item.price, item.currency || "UGX") : "On request"}</strong>
+                    </div>
+                    <p className="mk-card-where">
+                      <Icon name="location" size={12} /> {joinLocation(item.parish, item.district)}
+                    </p>
+                    {density === "comfortable" && item.description ? (
+                      <p className="mk-card-desc">{compactText(item.description, 96)}</p>
+                    ) : null}
+                    <div className="mk-card-actions">
+                      <span className="mk-card-meta">
+                        {item.mediaUrls.length ? `${item.mediaUrls.length} proof files` : "No proof files"}
+                      </span>
+                      {item.mediaUrls[0] ? (
+                        <a className="btn ghost small" href={item.mediaUrls[0]} target="_blank" rel="noreferrer">
+                          Evidence
+                        </a>
+                      ) : null}
+                    </div>
+                  </div>
+                </article>
+              ))}
+            </div>
+          )}
+        </section>
+      ) : null}
+
+      {!user ? (
+        <aside className="mk-access">
+          <div>
+            <strong>Contact details are hidden for guests.</strong>
+            <span>Browse everything freely — sign in when you are ready to call or WhatsApp a publisher.</span>
+          </div>
+          <Link className="btn small" to="/auth">
+            Sign in
+          </Link>
+        </aside>
+      ) : null}
     </section>
   );
 }

@@ -8,7 +8,7 @@ type StatusMessage = { type: "info" | "error"; message: string };
 export default function LoginPage() {
   const { login, verify, resendVerificationCode, requestPasswordReset, resetPassword } = useAuth();
 
-  const [loginPhone, setLoginPhone] = useState("");
+  const [loginIdentifier, setLoginIdentifier] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
   const [otpRequired, setOtpRequired] = useState(false);
   const [verificationEmail, setVerificationEmail] = useState("");
@@ -28,13 +28,13 @@ export default function LoginPage() {
   };
 
   const handleLogin = async () => {
-    if (!loginPhone.trim()) {
-      setStatus({ type: "error", message: "Enter your phone number." });
+    if (!loginIdentifier.trim()) {
+      setStatus({ type: "error", message: "Enter your phone number or email." });
       return;
     }
     setStatus({ type: "info", message: "Signing in..." });
     try {
-      const result = await login(loginPhone.trim(), loginPassword.trim() || undefined);
+      const result = await login(loginIdentifier.trim(), loginPassword.trim() || undefined);
       if (result.status === "logged_in") {
         setOtpRequired(false);
         setStatus({ type: "info", message: "Signed in." });
@@ -93,22 +93,34 @@ export default function LoginPage() {
             <div>
               <div className="label">Sign in</div>
               <h2>Access your AGRIK account</h2>
-              <p>Use your phone number and password. Unverified accounts must confirm email first.</p>
+              <p>Sign in with your phone number or your registered email, plus your password. Unverified accounts must confirm email first.</p>
             </div>
           </div>
 
           <div className="auth-form-grid auth-form-grid-login">
             <label className="field auth-span-2">
-              Phone number
-              <input placeholder="+2567..." value={loginPhone} onChange={(event) => setLoginPhone(event.target.value)} />
+              Phone number or email
+              <input
+                placeholder="+2567... or you@example.com"
+                autoComplete="username"
+                value={loginIdentifier}
+                onChange={(event) => setLoginIdentifier(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") void handleLogin();
+                }}
+              />
             </label>
             <label className="field auth-span-2">
               Password
               <input
                 type="password"
                 placeholder="Your password"
+                autoComplete="current-password"
                 value={loginPassword}
                 onChange={(event) => setLoginPassword(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") void handleLogin();
+                }}
               />
             </label>
           </div>

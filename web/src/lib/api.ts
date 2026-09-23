@@ -340,7 +340,7 @@ export const api = {
     request<AuthPhoneAvailabilityOut>(`/auth/phone-availability?phone=${encodeURIComponent(phone)}`),
   authEmailAvailability: (email: string) =>
     request<AuthEmailAvailabilityOut>(`/auth/email-availability?email=${encodeURIComponent(email)}`),
-  authLogin: (payload: { phone: string; password?: string | null }) =>
+  authLogin: (payload: { identifier: string; password?: string | null }) =>
     request<{ status: string; message?: string; token?: string; user?: AuthUserOut }>("/auth/login", {
       method: "POST",
       body: JSON.stringify({

@@ -134,7 +134,9 @@ router.get(
 );
 
 const loginSchema = z.object({
-  phone: z.string().min(6),
+  // `phone` is the legacy field name; `identifier` accepts either a phone number or an email.
+  phone: z.string().min(3).optional(),
+  identifier: z.string().min(3).optional(),
   password: z.string().min(1).optional().nullable(),
 });
 
@@ -144,12 +146,17 @@ router.post(
     const body = loginSchema.parse(req.body);
     if (!body.password) throw badRequest("password is required");
 
-    const phone = normalizePhone(body.phone);
-    const user = await prisma.user.findUnique({ where: { phone }, include: { identity: true } });
-    if (!user) throw unauthorized("Invalid phone number or password.");
+    const identifier = (body.identifier ?? body.phone ?? "").trim();
+    if (!identifier) throw badRequest("Enter your phone number or email.");
+
+    const user = identifier.includes("@")
+      ? await prisma.user.findUnique({ where: { email: normalizeEmail(identifier) }, include: { identity: true } })
+      : await prisma.user.findUnique({ where: { phone: normalizePhone(identifier) }, include: { identity: true } });
+    // Deliberately identical message for unknown account and wrong password, so this can't be used to probe which accounts exist.
+    if (!user) throw unauthorized("Invalid phone number, email, or password.");
 
     const valid = await verifyPassword(body.password, user.passwordHash);
-    if (!valid) throw unauthorized("Invalid phone number or password.");
+    if (!valid) throw unauthorized("Invalid phone number, email, or password.");
 
     if (user.verificationStatus !== "verified") {
       await issueVerificationCode(user.id, user.email);
