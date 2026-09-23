@@ -6,6 +6,7 @@ import { asyncHandler } from "../../middleware/errorHandler.js";
 import { requireAuth } from "../../middleware/auth.js";
 import { upload, publicUrlFor } from "../../middleware/upload.js";
 import { badRequest, notFound } from "../../lib/http-error.js";
+import { BILLING_PERIOD_DAYS, type BillingPeriod } from "../reference/config.js";
 
 const router = Router();
 router.use(requireAuth);
@@ -252,9 +253,12 @@ router.get(
       orderBy: { startsAt: "desc" },
     });
     if (!subscription) throw notFound("No subscription found.");
+    const plan = await prisma.servicePlan.findUnique({ where: { code: subscription.plan } });
     res.json({
       id: subscription.id,
       plan: subscription.plan,
+      plan_name: plan?.name ?? subscription.plan,
+      billing_period: plan?.billingPeriod ?? null,
       status: subscription.status,
       starts_at: subscription.startsAt.toISOString(),
       ends_at: subscription.endsAt?.toISOString() ?? null,
@@ -299,12 +303,26 @@ router.post(
   "/subscription",
   asyncHandler(async (req, res) => {
     const body = startSubscriptionSchema.parse(req.body);
+
+    // `plan` is a ServicePlan code. Reject anything that is not a sellable plan, so a
+    // subscription can never point at a retired or made-up plan.
+    const plan = await prisma.servicePlan.findUnique({ where: { code: body.plan } });
+    if (!plan) throw notFound("That plan does not exist.");
+    if (plan.status !== "active") throw badRequest("That plan is not currently available.");
+
+    // The term comes from the plan, not the caller, so a client cannot grant itself a
+    // longer subscription than it paid for.
+    const startsAt = new Date();
+    const termDays = BILLING_PERIOD_DAYS[plan.billingPeriod as BillingPeriod] ?? plan.durationDays;
+    const endsAt = termDays ? new Date(startsAt.getTime() + termDays * 24 * 60 * 60 * 1000) : null;
+
     const subscription = await prisma.subscription.create({
       data: {
         userId: req.userId!,
-        plan: body.plan,
+        plan: plan.code,
         status: body.status ?? "active",
-        endsAt: body.ends_at ? new Date(body.ends_at) : null,
+        startsAt,
+        endsAt,
         provider: body.provider ?? null,
         externalRef: body.external_ref ?? null,
       },
@@ -312,11 +330,36 @@ router.post(
     res.json({
       id: subscription.id,
       plan: subscription.plan,
+      plan_name: plan.name,
+      billing_period: plan.billingPeriod,
       status: subscription.status,
       starts_at: subscription.startsAt.toISOString(),
       ends_at: subscription.endsAt?.toISOString() ?? null,
       provider: subscription.provider,
       external_ref: subscription.externalRef,
+    });
+  })
+);
+
+/** The sellable plan catalog. Public to any signed-in user; the console owns its contents. */
+router.get(
+  "/service-plans",
+  asyncHandler(async (_req, res) => {
+    const plans = await prisma.servicePlan.findMany({
+      where: { status: "active" },
+      orderBy: [{ sortOrder: "asc" }, { id: "asc" }],
+    });
+    res.json({
+      items: plans.map((plan) => ({
+        id: plan.id,
+        code: plan.code,
+        name: plan.name,
+        summary: plan.summary,
+        price: plan.price,
+        currency: plan.currency,
+        billing_period: plan.billingPeriod,
+        duration_days: plan.durationDays,
+      })),
     });
   })
 );

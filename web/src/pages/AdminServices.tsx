@@ -1,51 +1,108 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { api } from "../lib/api";
-import { DEFAULT_PLATFORM_SERVICES } from "../lib/platformServices";
 
-type Service = {
+type Plan = {
   id: number;
-  service_type: string;
-  description?: string | null;
-  price?: number | null;
-  currency?: string | null;
+  code: string;
+  name: string;
+  summary?: string | null;
+  price: number;
+  currency: string;
+  billing_period: string;
+  duration_days?: number | null;
   status: string;
+  sort_order: number;
   updated_at?: string | null;
 };
 
-type ServiceFilters = {
-  service_type: string;
+type PlanFilters = {
+  billing_period: string;
   status: string;
 };
 
-type ServiceDraft = {
-  service_type: string;
-  description: string;
+type PlanDraft = {
+  code: string;
+  name: string;
+  summary: string;
   price: string;
   currency: string;
+  billing_period: string;
+  duration_days: string;
   status: string;
+  sort_order: string;
 };
 
-const defaultDraft: ServiceDraft = {
-  service_type: "",
-  description: "",
+const BILLING_PERIODS = [
+  { value: "monthly", label: "Monthly", hint: "Renews every 30 days" },
+  { value: "quarterly", label: "Quarterly", hint: "Renews every 91 days" },
+  { value: "annual", label: "Annual", hint: "Renews every 365 days" },
+  { value: "seasonal", label: "Seasonal", hint: "Runs for one planting season — set the days" },
+  { value: "one_off", label: "One-off", hint: "Charged once, no renewal — set how long access lasts" },
+];
+
+/** The two periods that are not a calendar interval and so carry their own term. */
+const NEEDS_DURATION = new Set(["seasonal", "one_off"]);
+
+const defaultDraft: PlanDraft = {
+  code: "",
+  name: "",
+  summary: "",
   price: "",
   currency: "UGX",
-  status: "open",
+  billing_period: "monthly",
+  duration_days: "",
+  status: "active",
+  sort_order: "0",
 };
 
-const formatStatus = (value?: string | null) => {
-  if (!value) return "--";
-  if (value === "open") return "active";
-  if (value === "closed") return "retired";
-  return value;
-};
+const periodLabel = (value?: string | null) =>
+  BILLING_PERIODS.find((item) => item.value === value)?.label ?? value ?? "--";
 
-function exportServicesCsv(items: Service[]) {
-  const headers = ["id", "service_type", "description", "price", "currency", "status", "updated_at"];
+/** What a farmer sees on the plan card: "UGX 15,000 / month". */
+function priceLine(plan: Plan) {
+  const amount = `${plan.currency} ${plan.price.toLocaleString()}`;
+  switch (plan.billing_period) {
+    case "monthly":
+      return `${amount} / month`;
+    case "quarterly":
+      return `${amount} / quarter`;
+    case "annual":
+      return `${amount} / year`;
+    case "seasonal":
+      return `${amount} / season${plan.duration_days ? ` (${plan.duration_days} days)` : ""}`;
+    case "one_off":
+      return `${amount} once${plan.duration_days ? ` (${plan.duration_days} days access)` : ""}`;
+    default:
+      return amount;
+  }
+}
+
+/** Derive a stable code from the plan name, so the admin rarely has to think about it. */
+function slugify(value: string) {
+  return value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "")
+    .slice(0, 64);
+}
+
+function exportPlansCsv(items: Plan[]) {
+  const headers = ["id", "code", "name", "summary", "price", "currency", "billing_period", "duration_days", "status", "sort_order"];
   const csv = [
     headers.join(","),
     ...items.map((item) =>
-      [item.id, item.service_type, item.description ?? "", item.price ?? "", item.currency ?? "UGX", item.status, item.updated_at ?? ""]
+      [
+        item.id,
+        item.code,
+        item.name,
+        item.summary ?? "",
+        item.price,
+        item.currency,
+        item.billing_period,
+        item.duration_days ?? "",
+        item.status,
+        item.sort_order,
+      ]
         .map((value) => `"${String(value).replace(/"/g, '""')}"`)
         .join(",")
     ),
@@ -54,120 +111,139 @@ function exportServicesCsv(items: Service[]) {
   const href = URL.createObjectURL(blob);
   const anchor = document.createElement("a");
   anchor.href = href;
-  anchor.download = `admin-services-${new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-")}.csv`;
+  anchor.download = `service-plans-${new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-")}.csv`;
   anchor.click();
   URL.revokeObjectURL(href);
 }
 
 export default function AdminServices() {
-  const [services, setServices] = useState<Service[]>([]);
-  const [filters, setFilters] = useState<ServiceFilters>({ service_type: "", status: "" });
-  const [draft, setDraft] = useState<ServiceDraft>(defaultDraft);
+  const [plans, setPlans] = useState<Plan[]>([]);
+  const [filters, setFilters] = useState<PlanFilters>({ billing_period: "", status: "" });
+  const [draft, setDraft] = useState<PlanDraft>(defaultDraft);
   const [editingId, setEditingId] = useState<number | null>(null);
-  const [selectedServiceId, setSelectedServiceId] = useState<number | null>(null);
+  const [selectedPlanId, setSelectedPlanId] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
 
-  const buildQuery = (params: Record<string, string>) => {
-    const search = new URLSearchParams();
-    Object.entries(params).forEach(([key, value]) => {
-      if (value) search.set(key, value);
-    });
-    const query = search.toString();
-    return query ? `?${query}` : "";
-  };
-
-  const loadServices = useCallback(() => {
+  const loadPlans = useCallback(() => {
     setError(null);
-    const query = buildQuery({
-      service_type: filters.service_type,
-      status: filters.status,
-      limit: "40",
-    });
     api
-      .adminServices(query)
+      .adminServices()
       .then((res) => {
-        const rows = (res as { items: Service[] }).items || [];
-        setServices(rows);
-        setSelectedServiceId((current) => (current && rows.some((item) => item.id === current) ? current : rows[0]?.id ?? null));
+        const rows = ((res as { items: Plan[] }).items || []).slice();
+        setPlans(rows);
+        setSelectedPlanId((current) => (current && rows.some((item) => item.id === current) ? current : rows[0]?.id ?? null));
       })
-      .catch(() => setError("Unable to load services."));
-  }, [filters]);
+      .catch(() => setError("Unable to load plans."));
+  }, []);
 
   useEffect(() => {
-    loadServices();
-  }, [loadServices]);
+    loadPlans();
+  }, [loadPlans]);
 
-  const serviceTypes = useMemo(() => {
-    const catalog = new Set(DEFAULT_PLATFORM_SERVICES);
-    services.forEach((service) => {
-      if (service.service_type) {
-        catalog.add(service.service_type);
-      }
-    });
-    return Array.from(catalog);
-  }, [services]);
+  // Filtering is local: the catalog is a short list that is always loaded in full.
+  const visiblePlans = useMemo(
+    () =>
+      plans.filter((plan) => {
+        if (filters.billing_period && plan.billing_period !== filters.billing_period) return false;
+        if (filters.status && plan.status !== filters.status) return false;
+        return true;
+      }),
+    [filters, plans]
+  );
 
   const resetDraft = () => {
     setDraft(defaultDraft);
     setEditingId(null);
   };
 
-  const startEdit = (service: Service) => {
-    setEditingId(service.id);
+  const startEdit = (plan: Plan) => {
+    setEditingId(plan.id);
     setDraft({
-      service_type: service.service_type ?? "",
-      description: service.description ?? "",
-      price: service.price ? String(service.price) : "",
-      currency: service.currency ?? "UGX",
-      status: service.status ?? "open",
+      code: plan.code,
+      name: plan.name,
+      summary: plan.summary ?? "",
+      price: String(plan.price),
+      currency: plan.currency,
+      billing_period: plan.billing_period,
+      duration_days: plan.duration_days ? String(plan.duration_days) : "",
+      status: plan.status,
+      sort_order: String(plan.sort_order ?? 0),
     });
   };
 
   const handleSave = async () => {
     setError(null);
     setStatusMessage(null);
-    if (!draft.service_type.trim()) {
-      setError("Service selection is required.");
+
+    const name = draft.name.trim();
+    if (!name) {
+      setError("A plan needs a name.");
       return;
     }
-
-    const payload = {
-      service_type: draft.service_type,
-      description: draft.description || null,
-      price: draft.price ? Number(draft.price) : null,
-      currency: draft.currency || "UGX",
-      status: draft.status || "open",
-    };
+    if (!draft.price.trim() || Number.isNaN(Number(draft.price))) {
+      setError("A plan needs a price. Use 0 for a free plan.");
+      return;
+    }
+    const durationDays = draft.duration_days ? Number(draft.duration_days) : null;
+    if (NEEDS_DURATION.has(draft.billing_period) && (!durationDays || durationDays < 1)) {
+      setError(`A ${periodLabel(draft.billing_period).toLowerCase()} plan needs a duration in days.`);
+      return;
+    }
 
     setSaving(true);
     try {
       if (editingId) {
-        await api.adminUpdateService(editingId, payload);
-        setStatusMessage(`Service #${editingId} updated.`);
+        await api.adminUpdateService(editingId, {
+          name,
+          summary: draft.summary || null,
+          price: Number(draft.price),
+          currency: draft.currency || "UGX",
+          billing_period: draft.billing_period,
+          duration_days: NEEDS_DURATION.has(draft.billing_period) ? durationDays : null,
+          status: draft.status,
+          sort_order: Number(draft.sort_order) || 0,
+        });
+        setStatusMessage(`${name} updated.`);
       } else {
-        await api.adminCreateService(payload);
-        setStatusMessage("Service created.");
+        const code = (draft.code.trim() || slugify(name)) as string;
+        if (!code) {
+          setError("Could not derive a code from that name — enter one.");
+          setSaving(false);
+          return;
+        }
+        await api.adminCreateService({
+          code,
+          name,
+          summary: draft.summary || null,
+          price: Number(draft.price),
+          currency: draft.currency || "UGX",
+          billing_period: draft.billing_period,
+          duration_days: NEEDS_DURATION.has(draft.billing_period) ? durationDays : null,
+          status: draft.status,
+          sort_order: Number(draft.sort_order) || 0,
+        });
+        setStatusMessage(`${name} created.`);
       }
       resetDraft();
-      loadServices();
-    } catch {
-      setError("Unable to save service.");
+      loadPlans();
+    } catch (err) {
+      setError((err as { detail?: string })?.detail || "Unable to save plan.");
     } finally {
       setSaving(false);
     }
   };
 
-  const handleDelete = async (serviceId: number) => {
+  const handleDelete = async (plan: Plan) => {
     setError(null);
     setStatusMessage(null);
     try {
-      await api.adminDeleteService(serviceId);
-      loadServices();
-      setStatusMessage(`Service #${serviceId} deleted.`);
-    } catch {
-      setError("Unable to delete service.");
+      await api.adminDeleteService(plan.id);
+      loadPlans();
+      setStatusMessage(`${plan.name} deleted.`);
+    } catch (err) {
+      setError((err as { detail?: string })?.detail || "Unable to delete plan.");
     }
   };
 
@@ -176,30 +252,37 @@ export default function AdminServices() {
     setError(null);
     setStatusMessage(null);
     try {
-      const result = (await api.adminSeedServices({ service_types: null })) as { created: number };
-      await loadServices();
-      setStatusMessage(`${result.created} default services added.`);
+      const result = await api.adminSeedServices();
+      await loadPlans();
+      setStatusMessage(
+        result.skipped
+          ? `${result.created} plan(s) added, ${result.skipped} already existed.`
+          : `${result.created} starter plan(s) added.`
+      );
     } catch {
-      setError("Unable to seed default services.");
+      setError("Unable to seed starter plans.");
     } finally {
       setSaving(false);
     }
   };
 
-  const selectedService = useMemo(
-    () => services.find((service) => service.id === selectedServiceId) ?? services[0] ?? null,
-    [selectedServiceId, services]
+  const selectedPlan = useMemo(
+    () => plans.find((plan) => plan.id === selectedPlanId) ?? visiblePlans[0] ?? null,
+    [plans, selectedPlanId, visiblePlans]
   );
 
   const summary = useMemo(
     () => ({
-      total: services.length,
-      active: services.filter((service) => service.status === "open").length,
-      paused: services.filter((service) => service.status === "paused").length,
-      incomplete: services.filter((service) => !service.description || service.price == null).length,
+      total: plans.length,
+      active: plans.filter((plan) => plan.status === "active").length,
+      paused: plans.filter((plan) => plan.status === "paused").length,
+      incomplete: plans.filter((plan) => !plan.summary).length,
     }),
-    [services]
+    [plans]
   );
+
+  const durationRequired = NEEDS_DURATION.has(draft.billing_period);
+  const selectedPeriodHint = BILLING_PERIODS.find((item) => item.value === draft.billing_period)?.hint;
 
   return (
     <section className="admin-page">
@@ -208,10 +291,10 @@ export default function AdminServices() {
 
       <div className="admin-kpi-grid">
         {[
-          { label: "Catalog", value: summary.total, meta: "Platform services listed" },
-          { label: "Active", value: summary.active, meta: "Currently sellable" },
-          { label: "Paused", value: summary.paused, meta: "Temporarily withheld" },
-          { label: "Incomplete", value: summary.incomplete, meta: "Need pricing or summary" },
+          { label: "Catalog", value: summary.total, meta: "Plans defined" },
+          { label: "Active", value: summary.active, meta: "Farmers can subscribe" },
+          { label: "Paused", value: summary.paused, meta: "Hidden from farmers" },
+          { label: "No summary", value: summary.incomplete, meta: "Farmers see a blank card" },
         ].map((item) => (
           <div key={item.label} className="admin-kpi-card">
             <div className="admin-kpi-label">{item.label}</div>
@@ -222,14 +305,11 @@ export default function AdminServices() {
       </div>
 
       <section className="admin-card">
-        <div className="admin-card-header">
-          <div>
-            <div className="label">Create service</div>
-            <h3>{editingId ? "Edit platform service" : "New platform service"}</h3>
-          </div>
+        <div className="admin-card-header compact">
+          <h3>{editingId ? `Edit ${draft.name || "plan"}` : "New plan"}</h3>
           <div className="admin-page-actions">
             <button className="btn ghost small" type="button" onClick={handleSeed} disabled={saving}>
-              Seed defaults
+              Seed starter plans
             </button>
             {editingId && (
               <button className="btn ghost small" type="button" onClick={resetDraft}>
@@ -241,145 +321,227 @@ export default function AdminServices() {
 
         <div className="settings-grid admin-form-grid">
           <label className="field">
-            Service
-            <select value={draft.service_type} onChange={(event) => setDraft((prev) => ({ ...prev, service_type: event.target.value }))}>
-              <option value="">Select service</option>
-              {serviceTypes.map((item) => (
-                <option key={item} value={item}>
-                  {item}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="field">
-            Summary
+            Plan name
             <input
-              placeholder="What subscribers receive, channels, and who it's for."
-              value={draft.description}
-              onChange={(event) => setDraft((prev) => ({ ...prev, description: event.target.value }))}
+              placeholder="Advanced Advisory (Image Diagnosis)"
+              value={draft.name}
+              onChange={(event) => setDraft((prev) => ({ ...prev, name: event.target.value }))}
             />
           </label>
           <label className="field">
-            Price (subscription)
-            <input type="number" value={draft.price} onChange={(event) => setDraft((prev) => ({ ...prev, price: event.target.value }))} />
+            Billing period
+            <select
+              value={draft.billing_period}
+              onChange={(event) => setDraft((prev) => ({ ...prev, billing_period: event.target.value }))}
+            >
+              {BILLING_PERIODS.map((item) => (
+                <option key={item.value} value={item.value}>
+                  {item.label}
+                </option>
+              ))}
+            </select>
+            {selectedPeriodHint ? <span className="field-note">{selectedPeriodHint}</span> : null}
+          </label>
+          <label className="field">
+            Price
+            <input
+              type="number"
+              min="0"
+              value={draft.price}
+              onChange={(event) => setDraft((prev) => ({ ...prev, price: event.target.value }))}
+            />
           </label>
           <label className="field">
             Currency
             <input value={draft.currency} onChange={(event) => setDraft((prev) => ({ ...prev, currency: event.target.value }))} />
           </label>
+          {durationRequired ? (
+            <label className="field">
+              Duration (days)
+              <input
+                type="number"
+                min="1"
+                placeholder={draft.billing_period === "seasonal" ? "150" : "7"}
+                value={draft.duration_days}
+                onChange={(event) => setDraft((prev) => ({ ...prev, duration_days: event.target.value }))}
+              />
+            </label>
+          ) : null}
           <label className="field">
             Status
             <select value={draft.status} onChange={(event) => setDraft((prev) => ({ ...prev, status: event.target.value }))}>
-              <option value="open">active</option>
+              <option value="active">active</option>
               <option value="paused">paused</option>
-              <option value="closed">retired</option>
+              <option value="retired">retired</option>
             </select>
           </label>
+          <label className="field">
+            Order
+            <input
+              type="number"
+              value={draft.sort_order}
+              onChange={(event) => setDraft((prev) => ({ ...prev, sort_order: event.target.value }))}
+            />
+          </label>
+          <label className="field farmer-form-span">
+            Summary
+            <input
+              placeholder="What the farmer gets, in one line."
+              value={draft.summary}
+              onChange={(event) => setDraft((prev) => ({ ...prev, summary: event.target.value }))}
+            />
+          </label>
           <button className="btn" type="button" onClick={handleSave} disabled={saving}>
-            {saving ? "Saving..." : editingId ? "Save changes" : "Create service"}
+            {saving ? "Saving..." : editingId ? "Save changes" : "Create plan"}
           </button>
         </div>
       </section>
 
       <section className="admin-listings-layout">
-      <section className="admin-card">
-        <div className="admin-card-header">
-          <div>
-            <div className="label">Service catalog</div>
-            <h3>Manage platform services</h3>
+        <section className="admin-card">
+          <div className="admin-card-header compact">
+            <h3>Plan catalog</h3>
+            <div className="admin-filter-bar">
+              <button className="btn ghost small" type="button" onClick={() => exportPlansCsv(visiblePlans)}>
+                Export
+              </button>
+              <select
+                value={filters.billing_period}
+                onChange={(event) => setFilters((prev) => ({ ...prev, billing_period: event.target.value }))}
+              >
+                <option value="">All periods</option>
+                {BILLING_PERIODS.map((item) => (
+                  <option key={item.value} value={item.value}>
+                    {item.label}
+                  </option>
+                ))}
+              </select>
+              <select value={filters.status} onChange={(event) => setFilters((prev) => ({ ...prev, status: event.target.value }))}>
+                <option value="">All status</option>
+                <option value="active">active</option>
+                <option value="paused">paused</option>
+                <option value="retired">retired</option>
+              </select>
+            </div>
           </div>
-          <div className="admin-filter-bar">
-            <button className="btn ghost small" type="button" onClick={() => exportServicesCsv(services)}>
-              Export filtered
-            </button>
-            <select value={filters.service_type} onChange={(event) => setFilters((prev) => ({ ...prev, service_type: event.target.value }))}>
-              <option value="">All services</option>
-              {serviceTypes.map((item) => (
-                <option key={item} value={item}>
-                  {item}
-                </option>
-              ))}
-            </select>
-            <select value={filters.status} onChange={(event) => setFilters((prev) => ({ ...prev, status: event.target.value }))}>
-              <option value="">All status</option>
-              <option value="open">active</option>
-              <option value="paused">paused</option>
-              <option value="closed">retired</option>
-            </select>
-            <button className="btn ghost small" type="button" onClick={loadServices}>
-              Apply
-            </button>
-          </div>
-        </div>
 
-        {services.length === 0 ? (
-          <p className="admin-empty">No platform services listed.</p>
-        ) : (
-          <div className="admin-table">
-            {services.map((service) => (
-              <div key={service.id} className={`admin-row admin-price-row ${selectedService?.id === service.id ? "active" : ""}`} onClick={() => setSelectedServiceId(service.id)}>
-                <div className="admin-row-main">
-                  <div className="tile-title">{service.service_type}</div>
-                  <div className="tile-meta">{service.description || "No description provided."}</div>
-                  <div className="admin-row-meta">
-                    {service.currency ?? "UGX"} {service.price ?? "--"}
-                  </div>
+          {visiblePlans.length === 0 ? (
+            <p className="admin-empty">
+              No plans yet. "Seed starter plans" fills the catalog with a set you can edit.
+            </p>
+          ) : (
+            <div className="admin-grid-wrap">
+              <table className="admin-grid">
+                <thead>
+                  <tr>
+                    <th>Plan</th>
+                    <th>Period</th>
+                    <th className="admin-grid-num">Price</th>
+                    <th>Status</th>
+                    <th aria-label="Actions" />
+                  </tr>
+                </thead>
+                <tbody>
+                  {visiblePlans.map((plan) => (
+                    <tr
+                      key={plan.id}
+                      className={selectedPlan?.id === plan.id ? "active" : ""}
+                      onClick={() => setSelectedPlanId(plan.id)}
+                    >
+                      <td>
+                        <strong>{plan.name}</strong>
+                        <span className="admin-grid-sub">{plan.code}</span>
+                      </td>
+                      <td>
+                        {periodLabel(plan.billing_period)}
+                        {plan.duration_days ? <span className="admin-grid-sub">{plan.duration_days} days</span> : null}
+                      </td>
+                      {/* Just the amount: the Period column already carries the term, and
+                          the detail panel shows the full line a farmer sees. */}
+                      <td className="admin-grid-num">
+                        {plan.currency} {plan.price.toLocaleString()}
+                      </td>
+                      <td>
+                        <span className={`pill ${plan.status === "active" ? "" : "pill-muted"}`}>{plan.status}</span>
+                      </td>
+                      <td className="admin-grid-actions">
+                        <button
+                          className="btn ghost small"
+                          type="button"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            startEdit(plan);
+                          }}
+                        >
+                          Edit
+                        </button>
+                        <button
+                          className="btn ghost small"
+                          type="button"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            handleDelete(plan);
+                          }}
+                        >
+                          Delete
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
+
+        <aside className="admin-card admin-listing-detail">
+          {!selectedPlan ? (
+            <p className="admin-empty">Select a plan to inspect it.</p>
+          ) : (
+            <>
+              <div className="admin-card-header compact">
+                <h3>{selectedPlan.name}</h3>
+                <span className={`pill ${selectedPlan.status === "active" ? "" : "pill-muted"}`}>{selectedPlan.status}</span>
+              </div>
+
+              <div className="admin-detail-grid">
+                <div>
+                  <span className="label">Farmers see</span>
+                  <strong>{priceLine(selectedPlan)}</strong>
                 </div>
-                <div className="admin-actions">
-                  <span className="pill">{formatStatus(service.status)}</span>
-                  <button className="btn ghost small" type="button" onClick={(event) => { event.stopPropagation(); startEdit(service); }}>
-                    Edit
-                  </button>
-                  <button className="btn ghost small" type="button" onClick={(event) => { event.stopPropagation(); handleDelete(service.id); }}>
-                    Delete
-                  </button>
+                <div>
+                  <span className="label">Billing period</span>
+                  <strong>{periodLabel(selectedPlan.billing_period)}</strong>
+                </div>
+                <div>
+                  <span className="label">Code</span>
+                  <strong>{selectedPlan.code}</strong>
+                </div>
+                <div>
+                  <span className="label">Updated</span>
+                  <strong>{selectedPlan.updated_at ? new Date(selectedPlan.updated_at).toLocaleDateString() : "--"}</strong>
                 </div>
               </div>
-            ))}
-          </div>
-        )}
-      </section>
 
-      <aside className="admin-card admin-listing-detail">
-        {!selectedService ? (
-          <p className="admin-empty">Select a service to inspect completeness and pricing.</p>
-        ) : (
-          <>
-            <div className="admin-card-header">
-              <div>
-                <div className="label">Service detail</div>
-                <h3>{selectedService.service_type}</h3>
+              <div className="admin-detail-block">
+                <div className="label">Summary</div>
+                <p>{selectedPlan.summary || "No summary — farmers will see a blank card."}</p>
               </div>
-              <span className={`pill ${selectedService.status === "open" ? "" : "pill-muted"}`}>{formatStatus(selectedService.status)}</span>
-            </div>
 
-            <div className="admin-detail-grid">
-              <div>
-                <span className="label">Price</span>
-                <strong>{selectedService.currency ?? "UGX"} {selectedService.price ?? "--"}</strong>
+              <div className="admin-detail-block">
+                <div className="label">Notes</div>
+                <div className="admin-chip-row">
+                  {!selectedPlan.summary && <span className="admin-filter-chip">Summary missing</span>}
+                  {selectedPlan.status !== "active" && <span className="admin-filter-chip">Not sellable</span>}
+                  {NEEDS_DURATION.has(selectedPlan.billing_period) && !selectedPlan.duration_days && (
+                    <span className="admin-filter-chip">Duration missing</span>
+                  )}
+                  <span className="admin-filter-chip">The code is fixed once live</span>
+                </div>
               </div>
-              <div>
-                <span className="label">Updated</span>
-                <strong>{selectedService.updated_at ? new Date(selectedService.updated_at).toLocaleDateString() : "--"}</strong>
-              </div>
-            </div>
-
-            <div className="admin-detail-block">
-              <div className="label">Summary</div>
-              <p>{selectedService.description || "No service summary provided."}</p>
-            </div>
-
-            <div className="admin-detail-block">
-              <div className="label">Catalog notes</div>
-              <div className="admin-chip-row">
-                {!selectedService.description && <span className="admin-filter-chip">Summary missing</span>}
-                {selectedService.price == null && <span className="admin-filter-chip">Price missing</span>}
-                {selectedService.status === "paused" && <span className="admin-filter-chip">Paused offering</span>}
-              </div>
-            </div>
-          </>
-        )}
-      </aside>
+            </>
+          )}
+        </aside>
       </section>
     </section>
   );

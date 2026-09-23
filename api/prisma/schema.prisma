@@ -31,13 +31,13 @@ model User {
   updatedAt          DateTime  @updatedAt @map("updated_at")
   lastLoginAt        DateTime? @map("last_login_at")
 
-  identity     Identity?
-  settings     UserSettings?
-  farm         FarmProfile?
-  subscriptions Subscription[]
-  platformServices PlatformService[]
-  chatMessages ChatMessage[]
-  chatConversations ChatConversation[]
+  identity           Identity?
+  settings           UserSettings?
+  farm               FarmProfile?
+  subscriptions      Subscription[]
+  platformServices   PlatformService[]
+  chatMessages       ChatMessage[]
+  chatConversations  ChatConversation[]
   emailVerifications EmailVerification[]
   passwordResets     PasswordReset[]
 
@@ -63,15 +63,15 @@ model Identity {
 }
 
 model UserSettings {
-  userId             String   @id @map("user_id")
-  preferredLanguage  String?  @map("preferred_language")
-  district           String?
-  parish             String?
-  smsOptIn           Boolean  @default(false) @map("sms_opt_in")
-  voiceOptIn         Boolean  @default(false) @map("voice_opt_in")
-  weatherAlerts      Boolean  @default(true) @map("weather_alerts")
-  priceAlerts        Boolean  @default(true) @map("price_alerts")
-  updatedAt          DateTime @updatedAt @map("updated_at")
+  userId            String   @id @map("user_id")
+  preferredLanguage String?  @map("preferred_language")
+  district          String?
+  parish            String?
+  smsOptIn          Boolean  @default(false) @map("sms_opt_in")
+  voiceOptIn        Boolean  @default(false) @map("voice_opt_in")
+  weatherAlerts     Boolean  @default(true) @map("weather_alerts")
+  priceAlerts       Boolean  @default(true) @map("price_alerts")
+  updatedAt         DateTime @updatedAt @map("updated_at")
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -93,12 +93,12 @@ model FarmProfile {
 }
 
 model EmailVerification {
-  id        String   @id @default(uuid())
-  userId    String   @map("user_id")
-  codeHash  String   @map("code_hash")
-  expiresAt DateTime @map("expires_at")
+  id         String    @id @default(uuid())
+  userId     String    @map("user_id")
+  codeHash   String    @map("code_hash")
+  expiresAt  DateTime  @map("expires_at")
   consumedAt DateTime? @map("consumed_at")
-  createdAt DateTime @default(now()) @map("created_at")
+  createdAt  DateTime  @default(now()) @map("created_at")
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -107,12 +107,12 @@ model EmailVerification {
 }
 
 model PasswordReset {
-  id        String   @id @default(uuid())
-  userId    String   @map("user_id")
-  codeHash  String   @map("code_hash")
-  expiresAt DateTime @map("expires_at")
+  id         String    @id @default(uuid())
+  userId     String    @map("user_id")
+  codeHash   String    @map("code_hash")
+  expiresAt  DateTime  @map("expires_at")
   consumedAt DateTime? @map("consumed_at")
-  createdAt DateTime @default(now()) @map("created_at")
+  createdAt  DateTime  @default(now()) @map("created_at")
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -125,12 +125,12 @@ model PasswordReset {
 // ---------------------------------------------------------------------------
 
 model Admin {
-  id                 String    @id @default(uuid())
-  email              String    @unique
-  passwordHash       String    @map("password_hash")
-  status             String    @default("active")
-  verificationStatus String    @default("verified") @map("verification_status")
-  createdAt          DateTime  @default(now()) @map("created_at")
+  id                 String   @id @default(uuid())
+  email              String   @unique
+  passwordHash       String   @map("password_hash")
+  status             String   @default("active")
+  verificationStatus String   @default("verified") @map("verification_status")
+  createdAt          DateTime @default(now()) @map("created_at")
 
   otps       AdminOtp[]
   activities AdminActivity[]
@@ -139,12 +139,12 @@ model Admin {
 }
 
 model AdminOtp {
-  id        String   @id @default(uuid())
-  adminId   String   @map("admin_id")
-  codeHash  String   @map("code_hash")
-  expiresAt DateTime @map("expires_at")
+  id         String    @id @default(uuid())
+  adminId    String    @map("admin_id")
+  codeHash   String    @map("code_hash")
+  expiresAt  DateTime  @map("expires_at")
   consumedAt DateTime? @map("consumed_at")
-  createdAt DateTime @default(now()) @map("created_at")
+  createdAt  DateTime  @default(now()) @map("created_at")
 
   admin Admin @relation(fields: [adminId], references: [id], onDelete: Cascade)
 
@@ -171,8 +171,8 @@ model AdminActivity {
 // ---------------------------------------------------------------------------
 
 model District {
-  id        String   @id @default(uuid())
-  name      String   @unique
+  id        String @id @default(uuid())
+  name      String @unique
   latitude  Float?
   longitude Float?
 
@@ -204,30 +204,30 @@ enum ListingRole {
 }
 
 model MarketListing {
-  id                Int       @id @default(autoincrement())
-  userId             String?  @map("user_id")
-  role               ListingRole @default(seller)
-  crop               String
-  quantity           Float?
-  unit               String?
-  price              Float?
-  currency           String    @default("UGX")
-  grade              String?
-  description        String?
-  contactName        String?   @map("contact_name")
-  contactPhone       String?   @map("contact_phone")
-  contactWhatsapp    String?   @map("contact_whatsapp")
-  mediaUrls          String[]  @default([]) @map("media_urls")
-  availabilityStart  DateTime? @map("availability_start")
-  availabilityEnd    DateTime? @map("availability_end")
-  status             String    @default("open")
-  district           String?
-  parish             String?
-  latitude           Float?
-  longitude          Float?
-  geometryWkt        String?   @map("geometry_wkt")
-  createdAt          DateTime  @default(now()) @map("created_at")
-  updatedAt          DateTime  @updatedAt @map("updated_at")
+  id                Int         @id @default(autoincrement())
+  userId            String?     @map("user_id")
+  role              ListingRole @default(seller)
+  crop              String
+  quantity          Float?
+  unit              String?
+  price             Float?
+  currency          String      @default("UGX")
+  grade             String?
+  description       String?
+  contactName       String?     @map("contact_name")
+  contactPhone      String?     @map("contact_phone")
+  contactWhatsapp   String?     @map("contact_whatsapp")
+  mediaUrls         String[]    @default([]) @map("media_urls")
+  availabilityStart DateTime?   @map("availability_start")
+  availabilityEnd   DateTime?   @map("availability_end")
+  status            String      @default("open")
+  district          String?
+  parish            String?
+  latitude          Float?
+  longitude         Float?
+  geometryWkt       String?     @map("geometry_wkt")
+  createdAt         DateTime    @default(now()) @map("created_at")
+  updatedAt         DateTime    @updatedAt @map("updated_at")
 
   offers MarketOffer[]
 
@@ -237,13 +237,13 @@ model MarketListing {
 }
 
 model MarketOffer {
-  id         Int      @id @default(autoincrement())
-  listingId  Int      @map("listing_id")
-  phone      String
-  price      Float?
-  quantity   Float?
-  status     String   @default("open")
-  createdAt  DateTime @default(now()) @map("created_at")
+  id        Int      @id @default(autoincrement())
+  listingId Int      @map("listing_id")
+  phone     String
+  price     Float?
+  quantity  Float?
+  status    String   @default("open")
+  createdAt DateTime @default(now()) @map("created_at")
 
   listing MarketListing @relation(fields: [listingId], references: [id], onDelete: Cascade)
 
@@ -253,22 +253,22 @@ model MarketOffer {
 }
 
 model MarketService {
-  id                Int      @id @default(autoincrement())
-  userId            String?  @map("user_id")
-  serviceType       String   @map("service_type")
-  description       String?
-  mediaUrls         String[] @default([]) @map("media_urls")
-  coverageRadiusKm  Float?   @map("coverage_radius_km")
-  price             Float?
-  currency          String   @default("UGX")
-  status            String   @default("active")
-  district          String?
-  parish            String?
-  latitude          Float?
-  longitude         Float?
-  geometryWkt       String?  @map("geometry_wkt")
-  createdAt         DateTime @default(now()) @map("created_at")
-  updatedAt         DateTime @updatedAt @map("updated_at")
+  id               Int      @id @default(autoincrement())
+  userId           String?  @map("user_id")
+  serviceType      String   @map("service_type")
+  description      String?
+  mediaUrls        String[] @default([]) @map("media_urls")
+  coverageRadiusKm Float?   @map("coverage_radius_km")
+  price            Float?
+  currency         String   @default("UGX")
+  status           String   @default("active")
+  district         String?
+  parish           String?
+  latitude         Float?
+  longitude        Float?
+  geometryWkt      String?  @map("geometry_wkt")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
 
   @@index([status])
   @@map("market_services")
@@ -290,18 +290,18 @@ model MarketPrice {
 }
 
 model MarketAlert {
-  id               Int      @id @default(autoincrement())
+  id               Int       @id @default(autoincrement())
   phone            String
-  alertType        String   @map("alert_type")
+  alertType        String    @map("alert_type")
   crop             String?
   threshold        Float?
-  channel          String?  @default("sms")
-  active           Boolean  @default(true)
-  minIntervalHours Int?     @map("min_interval_hours")
+  channel          String?   @default("sms")
+  active           Boolean   @default(true)
+  minIntervalHours Int?      @map("min_interval_hours")
   district         String?
   parish           String?
   lastTriggeredAt  DateTime? @map("last_triggered_at")
-  createdAt        DateTime @default(now()) @map("created_at")
+  createdAt        DateTime  @default(now()) @map("created_at")
 
   @@index([phone])
   @@map("market_alerts")
@@ -326,6 +326,33 @@ model Subscription {
 
   @@index([userId])
   @@map("subscriptions")
+}
+
+/// AGRIK's own subscription products, as opposed to MarketService, which is what
+/// providers post for sale in the marketplace. The admin console used to write its
+/// "platform services" into MarketService, which published them to the public feed
+/// and meant nothing an admin created could ever be subscribed to.
+model ServicePlan {
+  id            Int      @id @default(autoincrement())
+  /// Stable key. `Subscription.plan` stores this, so it must not change once live.
+  code          String   @unique
+  name          String
+  summary       String?
+  price         Float
+  currency      String   @default("UGX")
+  /// monthly | quarterly | annual | seasonal | one_off
+  billingPeriod String   @map("billing_period")
+  /// Term length for the periods that are not a calendar interval: `seasonal` runs for
+  /// a planting season and `one_off` may grant access for a fixed window. Null for the
+  /// recurring calendar periods, which derive their own end date.
+  durationDays  Int?     @map("duration_days")
+  status        String   @default("active")
+  sortOrder     Int      @default(0) @map("sort_order")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  @@index([status])
+  @@map("service_plans")
 }
 
 model PlatformService {

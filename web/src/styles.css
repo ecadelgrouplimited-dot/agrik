@@ -10035,14 +10035,17 @@ a {
 .admin-alerts-page {
   gap: 16px;
 }
+
 .admin-priority-grid,
 .admin-listings-layout {
   display: grid;
   gap: 14px;
 }
+
 .admin-priority-grid {
   grid-template-columns: minmax(0, 1.35fr) minmax(320px, 0.85fr);
 }
+
 .admin-health-list,
 .admin-spotlight-list,
 .admin-mini-list,
@@ -10053,6 +10056,7 @@ a {
   display: grid;
   gap: 12px;
 }
+
 .admin-quick-action-row,
 .admin-chip-row,
 .admin-bulk-bar {
@@ -10060,6 +10064,7 @@ a {
   flex-wrap: wrap;
   gap: 10px;
 }
+
 .admin-queue-grid {
   display: grid;
   gap: 12px;
@@ -10068,6 +10073,7 @@ a {
 .admin-queue-grid {
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
 }
+
 .admin-queue-card,
 .admin-spotlight-card,
 .admin-risk-item,
@@ -10077,11 +10083,13 @@ a {
   border-radius: 20px;
   background: rgba(255, 255, 255, 0.92);
 }
+
 .admin-queue-card,
 .admin-spotlight-card {
   text-align: left;
   cursor: pointer;
 }
+
 .admin-queue-card,
 .admin-risk-item,
 .admin-listing-card,
@@ -10165,7 +10173,9 @@ a {
 }
 
 .admin-listings-layout {
-  grid-template-columns: minmax(0, 1.35fr) minmax(320px, 0.85fr);
+  /* The left column holds a record table whose last column is a pair of buttons, so the
+     detail panel takes a fixed width rather than a share of the row. */
+  grid-template-columns: minmax(0, 1fr) 340px;
   align-items: start;
 }
 
@@ -11705,4 +11715,78 @@ a {
 
 .admin-controls-end .admin-controls-meta {
   margin-left: 0;
+}
+
+/* Farmer-facing plan catalog. */
+.fw-plan-current {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--color-primary);
+}
+
+.fw-search {
+  border: 1px solid rgba(11, 11, 11, 0.12);
+  border-radius: 999px;
+  padding: 5px 12px;
+  font-size: 12.5px;
+  min-width: 150px;
+}
+
+.fw-plan-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 10px;
+}
+
+.fw-plan-card {
+  display: grid;
+  gap: 7px;
+  align-content: start;
+  border: 1px solid rgba(11, 11, 11, 0.08);
+  border-radius: 14px;
+  background: var(--color-white);
+  padding: 14px;
+}
+
+.fw-plan-card.current {
+  border-color: rgba(31, 111, 61, 0.45);
+  background: rgba(31, 111, 61, 0.05);
+}
+
+.fw-plan-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.fw-plan-head h3 {
+  margin: 0;
+  font-size: 14.5px;
+  line-height: 1.25;
+}
+
+.fw-plan-period {
+  flex: 0 0 auto;
+  border-radius: 999px;
+  background: rgba(31, 111, 61, 0.09);
+  color: var(--color-primary);
+  padding: 2px 9px;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.fw-plan-price {
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--color-primary);
+}
+
+.fw-plan-summary {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: rgba(11, 11, 11, 0.62);
 }

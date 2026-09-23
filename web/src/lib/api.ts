@@ -656,6 +656,8 @@ export const api = {
     request<{
       id: number;
       plan: string;
+      plan_name?: string | null;
+      billing_period?: string | null;
       status: string;
       starts_at: string;
       ends_at?: string | null;
@@ -675,9 +677,9 @@ export const api = {
       }[]
     >(`/profile/subscriptions?limit=${limit}`),
   startSubscription: (payload: {
+    /** A ServicePlan code. The API derives the term from the plan's billing period. */
     plan: string;
     status?: string;
-    ends_at?: string | null;
     provider?: string | null;
     external_ref?: string | null;
   }) =>
@@ -685,6 +687,19 @@ export const api = {
       method: "POST",
       body: JSON.stringify(payload),
     }),
+  servicePlans: () =>
+    request<{
+      items: {
+        id: number;
+        code: string;
+        name: string;
+        summary?: string | null;
+        price: number;
+        currency: string;
+        billing_period: string;
+        duration_days?: number | null;
+      }[];
+    }>("/profile/service-plans"),
   platformServices: (query = "") =>
     request<
       {
@@ -962,38 +977,45 @@ export const api = {
     }),
   adminServices: (query = "") => adminRequest<{ items: unknown[] }>(`/admin/services${query}`),
   adminCreateService: (payload: {
-    service_type: string;
-    description?: string | null;
-    price?: number | null;
+    code: string;
+    name: string;
+    summary?: string | null;
+    price: number;
     currency?: string | null;
+    billing_period: string;
+    duration_days?: number | null;
     status?: string | null;
+    sort_order?: number;
   }) =>
     adminRequest(`/admin/services`, {
       method: "POST",
       body: JSON.stringify(payload),
     }),
   adminUpdateService: (
-    serviceId: number,
+    planId: number,
     payload: {
-      service_type?: string | null;
-      description?: string | null;
+      name?: string | null;
+      summary?: string | null;
       price?: number | null;
       currency?: string | null;
+      billing_period?: string | null;
+      duration_days?: number | null;
       status?: string | null;
+      sort_order?: number;
     }
   ) =>
-    adminRequest(`/admin/services/${serviceId}`, {
+    adminRequest(`/admin/services/${planId}`, {
       method: "PATCH",
       body: JSON.stringify(payload),
     }),
-  adminDeleteService: (serviceId: number) =>
-    adminRequest(`/admin/services/${serviceId}`, {
+  adminDeleteService: (planId: number) =>
+    adminRequest(`/admin/services/${planId}`, {
       method: "DELETE",
     }),
-  adminSeedServices: (payload: { service_types?: string[] | null }) =>
-    adminRequest<{ created: number }>(`/admin/services/seed`, {
+  adminSeedServices: () =>
+    adminRequest<{ created: number; skipped: number }>(`/admin/services/seed`, {
       method: "POST",
-      body: JSON.stringify(payload),
+      body: JSON.stringify({}),
     }),
   adminMetadata: () =>
     adminRequest<{

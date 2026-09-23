@@ -4,9 +4,18 @@ import type { Prisma } from "@prisma/client";
 import { prisma } from "../../lib/prisma.js";
 import { asyncHandler } from "../../middleware/errorHandler.js";
 import { requireAdminAuth } from "../../middleware/adminAuth.js";
-import { notFound } from "../../lib/http-error.js";
-import { listingOut, serviceOut } from "../market/router.js";
-import { CROPS, CURRENCIES, PRICE_SOURCES, SERVICE_TYPES, ALERT_TYPES, ALERT_CHANNELS } from "../reference/config.js";
+import { badRequest, conflict, notFound } from "../../lib/http-error.js";
+import { listingOut } from "../market/router.js";
+import {
+  CROPS,
+  CURRENCIES,
+  PRICE_SOURCES,
+  SERVICE_TYPES,
+  ALERT_TYPES,
+  ALERT_CHANNELS,
+  BILLING_PERIODS,
+  DEFAULT_SERVICE_PLANS,
+} from "../reference/config.js";
 
 const router = Router();
 router.use(requireAdminAuth);
@@ -82,7 +91,9 @@ router.get(
       prisma.user.count({ where: { verificationStatus: "verified" } }),
       prisma.marketListing.count(),
       prisma.marketOffer.count(),
-      prisma.marketService.count(),
+      // The console's Services section is the plan catalog, so its count is plans, not
+      // the provider offers in the marketplace.
+      prisma.servicePlan.count(),
       prisma.marketAlert.count(),
       prisma.marketPrice.count(),
     ]);
@@ -403,55 +414,124 @@ router.patch(
   })
 );
 
+function servicePlanOut(plan: {
+  id: number;
+  code: string;
+  name: string;
+  summary: string | null;
+  price: number;
+  currency: string;
+  billingPeriod: string;
+  durationDays: number | null;
+  status: string;
+  sortOrder: number;
+  createdAt: Date;
+  updatedAt: Date;
+}) {
+  return {
+    id: plan.id,
+    code: plan.code,
+    name: plan.name,
+    summary: plan.summary,
+    price: plan.price,
+    currency: plan.currency,
+    billing_period: plan.billingPeriod,
+    duration_days: plan.durationDays,
+    status: plan.status,
+    sort_order: plan.sortOrder,
+    created_at: plan.createdAt.toISOString(),
+    updated_at: plan.updatedAt.toISOString(),
+  };
+}
+
+// These routes manage AGRIK's own plan catalog. They used to write into MarketService,
+// which published every plan to the public marketplace feed and meant nothing created
+// here could ever be subscribed to.
 router.get(
   "/services",
   asyncHandler(async (_req, res) => {
-    const items = await prisma.marketService.findMany({ orderBy: { createdAt: "desc" }, take: 500 });
-    res.json({ items: items.map(serviceOut) });
+    const items = await prisma.servicePlan.findMany({ orderBy: [{ sortOrder: "asc" }, { id: "asc" }], take: 500 });
+    res.json({ items: items.map(servicePlanOut) });
   })
 );
 
-const adminServiceSchema = z.object({
-  service_type: z.string().min(1),
-  description: z.string().nullable().optional(),
-  price: z.number().nullable().optional(),
+const planSchema = z.object({
+  code: z.string().min(1).max(64).regex(/^[a-z0-9_]+$/, "Use lowercase letters, numbers and underscores."),
+  name: z.string().min(1),
+  summary: z.string().nullable().optional(),
+  price: z.number().nonnegative(),
   currency: z.string().optional(),
-  status: z.string().nullable().optional(),
+  billing_period: z.enum(BILLING_PERIODS),
+  duration_days: z.number().int().positive().nullable().optional(),
+  status: z.string().optional(),
+  sort_order: z.number().int().optional(),
 });
+
+/** `seasonal` and `one_off` are not calendar intervals, so they need an explicit term. */
+function requireDurationWhereNeeded(period: string, durationDays: number | null | undefined) {
+  if ((period === "seasonal" || period === "one_off") && !durationDays) {
+    throw badRequest(`A ${period.replace("_", "-")} plan needs a duration in days.`);
+  }
+}
 
 router.post(
   "/services",
   asyncHandler(async (req, res) => {
-    const body = adminServiceSchema.parse(req.body);
-    const service = await prisma.marketService.create({
+    const body = planSchema.parse(req.body);
+    requireDurationWhereNeeded(body.billing_period, body.duration_days);
+
+    const existing = await prisma.servicePlan.findUnique({ where: { code: body.code } });
+    if (existing) throw conflict(`A plan with the code "${body.code}" already exists.`);
+
+    const plan = await prisma.servicePlan.create({
       data: {
-        serviceType: body.service_type,
-        description: body.description ?? null,
-        price: body.price ?? null,
+        code: body.code,
+        name: body.name,
+        summary: body.summary ?? null,
+        price: body.price,
         currency: body.currency ?? "UGX",
+        billingPeriod: body.billing_period,
+        durationDays: body.duration_days ?? null,
         status: body.status ?? "active",
+        sortOrder: body.sort_order ?? 0,
       },
     });
-    await logActivity(req.adminId!, "service_created", { serviceId: service.id }, req.ip);
-    res.json({ status: "created", id: service.id });
+    await logActivity(req.adminId!, "service_created", { planId: plan.id, code: plan.code }, req.ip);
+    res.json({ status: "created", id: plan.id });
   })
 );
 
 router.patch(
   "/services/:id",
   asyncHandler(async (req, res) => {
-    const body = adminServiceSchema.partial().parse(req.body);
-    const service = await prisma.marketService.update({
-      where: { id: Number(req.params.id) },
+    const body = planSchema.partial().parse(req.body);
+    const current = await prisma.servicePlan.findUnique({ where: { id: Number(req.params.id) } });
+    if (!current) throw notFound("Plan not found.");
+
+    const period = body.billing_period ?? current.billingPeriod;
+    const duration = body.duration_days === undefined ? current.durationDays : body.duration_days;
+    requireDurationWhereNeeded(period, duration);
+
+    // The code is what live subscriptions point at, so it cannot be edited once a plan
+    // exists. Retire the plan and add a new one instead.
+    if (body.code && body.code !== current.code) {
+      throw badRequest("A plan's code cannot change once it exists — retire it and add a new one.");
+    }
+
+    const plan = await prisma.servicePlan.update({
+      where: { id: current.id },
       data: {
-        serviceType: body.service_type,
-        description: body.description,
+        name: body.name,
+        summary: body.summary,
         price: body.price,
         currency: body.currency ?? undefined,
+        billingPeriod: body.billing_period ?? undefined,
+        durationDays: body.duration_days === undefined ? undefined : body.duration_days,
         status: body.status ?? undefined,
+        sortOrder: body.sort_order ?? undefined,
       },
     });
-    await logActivity(req.adminId!, "service_updated", { serviceId: service.id }, req.ip);
+    await logActivity(req.adminId!, "service_updated", { planId: plan.id, code: plan.code }, req.ip);
     res.json({ status: "updated" });
   })
 );
@@ -459,24 +539,42 @@ router.patch(
 router.delete(
   "/services/:id",
   asyncHandler(async (req, res) => {
-    await prisma.marketService.delete({ where: { id: Number(req.params.id) } });
-    await logActivity(req.adminId!, "service_deleted", { serviceId: Number(req.params.id) }, req.ip);
+    const plan = await prisma.servicePlan.findUnique({ where: { id: Number(req.params.id) } });
+    if (!plan) throw notFound("Plan not found.");
+
+    // Deleting a plan someone is paying for would orphan their subscription. Retire it.
+    const live = await prisma.subscription.count({ where: { plan: plan.code, status: "active" } });
+    if (live > 0) {
+      throw conflict(`${live} active subscription(s) use this plan. Set it to retired instead of deleting it.`);
+    }
+
+    await prisma.servicePlan.delete({ where: { id: plan.id } });
+    await logActivity(req.adminId!, "service_deleted", { planId: plan.id, code: plan.code }, req.ip);
     res.json({ status: "deleted" });
   })
 );
 
-const seedSchema = z.object({ service_types: z.array(z.string()).nullable().optional() });
-
 router.post(
   "/services/seed",
-  asyncHandler(async (req, res) => {
-    const body = seedSchema.parse(req.body);
-    const types = body.service_types?.length ? body.service_types : SERVICE_TYPES;
-    const created = await prisma.marketService.createMany({
-      data: types.map((serviceType) => ({ serviceType, status: "active" })),
+  asyncHandler(async (_req, res) => {
+    // Idempotent: skips codes that already exist, so it is safe to press twice.
+    const existing = await prisma.servicePlan.findMany({ select: { code: true } });
+    const have = new Set(existing.map((plan) => plan.code));
+    const missing = DEFAULT_SERVICE_PLANS.filter((plan) => !have.has(plan.code));
+
+    const created = await prisma.servicePlan.createMany({
+      data: missing.map((plan) => ({
+        code: plan.code,
+        name: plan.name,
+        summary: plan.summary,
+        price: plan.price,
+        billingPeriod: plan.billingPeriod,
+        durationDays: plan.durationDays ?? null,
+        sortOrder: plan.sortOrder,
+      })),
     });
-    await logActivity(req.adminId!, "services_seeded", { count: created.count }, req.ip);
-    res.json({ created: created.count });
+    await logActivity(_req.adminId!, "services_seeded", { count: created.count }, _req.ip);
+    res.json({ created: created.count, skipped: DEFAULT_SERVICE_PLANS.length - created.count });
   })
 );
 

@@ -3,42 +3,62 @@ import { NavLink } from "react-router-dom";
 import { api } from "../lib/api";
 import { Icon } from "../components/Visuals";
 
-type PlatformService = {
+type Plan = {
   id: number;
-  service_type: string;
-  description?: string | null;
-  price?: number | null;
-  currency?: string | null;
-  status: string;
+  code: string;
+  name: string;
+  summary?: string | null;
+  price: number;
+  currency: string;
+  billing_period: string;
+  duration_days?: number | null;
 };
 
 type Subscription = {
   plan: string;
+  plan_name?: string | null;
+  billing_period?: string | null;
   status: string;
   ends_at?: string | null;
 };
 
-const formatStatus = (value: string) => {
-  if (value === "open") return "active";
-  if (value === "closed") return "retired";
-  return value;
-};
-
-function formatMoney(value?: number | null, currency?: string | null) {
-  if (value == null) return "Price on request";
+function formatMoney(value: number, currency: string) {
   try {
-    return new Intl.NumberFormat(undefined, {
-      style: "currency",
-      currency: currency || "UGX",
-      maximumFractionDigits: 0,
-    }).format(value);
+    return new Intl.NumberFormat(undefined, { style: "currency", currency: currency || "UGX", maximumFractionDigits: 0 }).format(value);
   } catch {
-    return `${currency || "UGX"} ${value}`;
+    return `${currency || "UGX"} ${value.toLocaleString()}`;
   }
 }
 
+/** The price and its term read as one line, so "how much" and "how long" are never separated. */
+function priceLine(plan: Plan) {
+  const amount = formatMoney(plan.price, plan.currency);
+  switch (plan.billing_period) {
+    case "monthly":
+      return `${amount} / month`;
+    case "quarterly":
+      return `${amount} / quarter`;
+    case "annual":
+      return `${amount} / year`;
+    case "seasonal":
+      return plan.duration_days ? `${amount} / season · ${plan.duration_days} days` : `${amount} / season`;
+    case "one_off":
+      return plan.duration_days ? `${amount} once · ${plan.duration_days} days access` : `${amount} once`;
+    default:
+      return amount;
+  }
+}
+
+const periodLabel: Record<string, string> = {
+  monthly: "Monthly",
+  quarterly: "Quarterly",
+  annual: "Annual",
+  seasonal: "Seasonal",
+  one_off: "One-off",
+};
+
 export default function FarmerServices() {
-  const [services, setServices] = useState<PlatformService[]>([]);
+  const [plans, setPlans] = useState<Plan[]>([]);
   const [subscription, setSubscription] = useState<Subscription | null>(null);
   const [loading, setLoading] = useState(true);
   const [savingPlan, setSavingPlan] = useState<string | null>(null);
@@ -49,213 +69,113 @@ export default function FarmerServices() {
   const loadAll = () => {
     setLoading(true);
     setError(null);
-    Promise.allSettled([api.platformServices("?status=open&limit=100"), api.subscription()])
-      .then(([servicesRes, subscriptionRes]) => {
-        if (servicesRes.status === "fulfilled") {
-          setServices(servicesRes.value as PlatformService[]);
+    Promise.allSettled([api.servicePlans(), api.subscription()])
+      .then(([plansRes, subscriptionRes]) => {
+        if (plansRes.status === "fulfilled") {
+          setPlans(plansRes.value.items);
         } else {
-          setServices([]);
-          setError("Unable to load platform services.");
+          setPlans([]);
+          setError("Unable to load the plan catalog.");
         }
-
-        if (subscriptionRes.status === "fulfilled") {
-          setSubscription(subscriptionRes.value as Subscription);
-        } else {
-          setSubscription(null);
-        }
+        // A missing subscription is the normal state for a new account, not an error.
+        setSubscription(subscriptionRes.status === "fulfilled" ? (subscriptionRes.value as Subscription) : null);
       })
       .finally(() => setLoading(false));
   };
 
-  useEffect(() => {
-    loadAll();
-  }, []);
+  useEffect(loadAll, []);
 
-  const subscribeToService = async (serviceType: string) => {
-    setSavingPlan(serviceType);
+  const subscribe = async (plan: Plan) => {
+    setSavingPlan(plan.code);
     setMessage(null);
     setError(null);
     try {
-      await api.startSubscription({
-        plan: serviceType,
-        status: "trial",
-        provider: "platform",
-      });
-      setMessage(`Subscribed to ${serviceType}.`);
+      // The API derives the term from the plan's billing period; the client does not set it.
+      await api.startSubscription({ plan: plan.code, status: "trial", provider: "platform" });
+      setMessage(`${plan.name} is now active on this account.`);
       loadAll();
-    } catch {
-      setError("Unable to start subscription for this service.");
+    } catch (err) {
+      setError((err as { detail?: string })?.detail || "Unable to start this plan.");
     } finally {
       setSavingPlan(null);
     }
   };
 
-  const filteredServices = useMemo(() => {
+  const visiblePlans = useMemo(() => {
     const query = search.trim().toLowerCase();
-    if (!query) return services;
-    return services.filter((service) => {
-      return service.service_type.toLowerCase().includes(query) || (service.description || "").toLowerCase().includes(query);
-    });
-  }, [search, services]);
+    if (!query) return plans;
+    return plans.filter((plan) => plan.name.toLowerCase().includes(query) || (plan.summary || "").toLowerCase().includes(query));
+  }, [plans, search]);
 
-  const pricedServices = services.filter((service) => service.price != null).length;
-  const recommendation = filteredServices.find((service) => service.service_type !== subscription?.plan) ?? filteredServices[0] ?? null;
+  if (loading) return <section className="farmer-page">Loading plans...</section>;
 
-  if (loading) return <section className="farmer-page">Loading service catalog...</section>;
+  const currentName = subscription?.plan_name ?? subscription?.plan;
 
   return (
-    <section className="farmer-page">
-      <div className="farmer-page-header farmer-command-header header-actions-only">
-        <div className="farmer-command-actions">
+    <section className="farmer-page fw">
+      {/* One bar: what you are on now, and the two things you might do about it. */}
+      <div className="fw-bar">
+        <span className="fw-farm-label">Plan</span>
+        <strong className="fw-plan-current">{currentName ?? "None active"}</strong>
+        {subscription ? (
+          <span className="fw-farm-meta">
+            {subscription.status}
+            {subscription.ends_at ? ` · renews ${new Date(subscription.ends_at).toLocaleDateString()}` : ""}
+          </span>
+        ) : (
+          <span className="fw-farm-meta">Pick a plan below to activate advisory, alerts, or market support.</span>
+        )}
+        <div className="fw-actions">
+          <input
+            className="fw-search"
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder="Search plans"
+            aria-label="Search plans"
+          />
           <button className="btn ghost small" type="button" onClick={loadAll}>
             Refresh
           </button>
           <NavLink to="/dashboard/subscriptions" className="btn small">
-            <Icon name="subscriptions" size={14} />
-            Open plans
+            <Icon name="subscriptions" size={13} />
+            Billing
           </NavLink>
         </div>
       </div>
 
-      {(message || error) ? <p className={`status ${error ? "error" : ""}`}>{error ?? message}</p> : null}
+      {(message || error) && <p className={`status ${error ? "error" : ""}`}>{error ?? message}</p>}
 
-      <section className="farmer-card farmer-command-hero">
-        <div className="farmer-command-hero-copy">
-          <div className="label">Current service posture</div>
-          <h3>{subscription?.plan ? `${subscription.plan} is active for this account` : "No service plan is active yet"}</h3>
+      {visiblePlans.length === 0 ? (
+        <section className="fw-panel">
           <p className="muted">
-            {subscription?.ends_at
-              ? `Current plan runs until ${new Date(subscription.ends_at).toLocaleDateString()}.`
-              : "Start with a trial to activate advisory, weather, or market support quickly."}
+            {plans.length === 0 ? "No plans are available yet." : "No plan matches that search."}
           </p>
-        </div>
-        <div className="farmer-command-hero-side">
-          <article className="farmer-command-mini-card">
-            <span className="label">Catalog</span>
-            <strong>{services.length}</strong>
-            <span className="muted">Available services</span>
-          </article>
-          <article className="farmer-command-mini-card">
-            <span className="label">Priced</span>
-            <strong>{pricedServices}</strong>
-            <span className="muted">Services with visible pricing</span>
-          </article>
-        </div>
-      </section>
-
-      <div className="farmer-kpi-grid">
-        <div className="farmer-kpi-card">
-          <div className="farmer-kpi-head">
-            <span className="kpi-icon">
-              <Icon name="subscriptions" size={16} />
-            </span>
-            <div className="farmer-kpi-label">Current plan</div>
-          </div>
-          <div className="farmer-kpi-value">{subscription?.plan ?? "None"}</div>
-          <div className="farmer-kpi-meta">{subscription?.status ?? "not subscribed"}</div>
-        </div>
-        <div className="farmer-kpi-card">
-          <div className="farmer-kpi-head">
-            <span className="kpi-icon">
-              <Icon name="services" size={16} />
-            </span>
-            <div className="farmer-kpi-label">Catalog size</div>
-          </div>
-          <div className="farmer-kpi-value">{services.length}</div>
-          <div className="farmer-kpi-meta">Support tools ready to activate</div>
-        </div>
-        <div className="farmer-kpi-card">
-          <div className="farmer-kpi-head">
-            <span className="kpi-icon">
-              <Icon name="finance" size={16} />
-            </span>
-            <div className="farmer-kpi-label">Priced offers</div>
-          </div>
-          <div className="farmer-kpi-value">{pricedServices}</div>
-          <div className="farmer-kpi-meta">Services with listed pricing</div>
-        </div>
-      </div>
-
-      <div className="farmer-dashboard-grid">
-        <section className="farmer-card">
-          <div className="farmer-card-header">
-            <div>
-              <div className="label">Recommendation</div>
-              <h3>Suggested next service</h3>
-            </div>
-          </div>
-          {recommendation ? (
-            <div className="farmer-recommendation-card static">
-              <div>
-                <strong>{recommendation.service_type}</strong>
-                <p>{recommendation.description || "Platform support service available to extend your operating coverage."}</p>
-              </div>
-              <span>{formatMoney(recommendation.price, recommendation.currency)}</span>
-            </div>
-          ) : (
-            <p className="muted">No recommendation available right now.</p>
-          )}
         </section>
-
-        <section className="farmer-card">
-          <div className="farmer-card-header">
-            <div>
-              <div className="label">Search catalog</div>
-              <h3>Find the right support</h3>
-            </div>
-          </div>
-          <label className="field">
-            Search services
-            <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search advisory, weather, market..." />
-          </label>
-          <div className="farmer-side-summary">
-            <div className="farmer-side-summary-item">
-              <span>Matches</span>
-              <strong>{filteredServices.length}</strong>
-            </div>
-            <div className="farmer-side-summary-item">
-              <span>Current subscription</span>
-              <strong>{subscription?.plan ?? "None"}</strong>
-            </div>
-          </div>
-        </section>
-      </div>
-
-      <div className="farmer-service-grid">
-        {filteredServices.length === 0 ? (
-          <section className="farmer-card">
-            <p>No platform services match your search right now.</p>
-          </section>
-        ) : (
-          filteredServices.map((service) => {
-            const isCurrent = subscription?.plan === service.service_type;
+      ) : (
+        <div className="fw-plan-grid">
+          {visiblePlans.map((plan) => {
+            const isCurrent = subscription?.plan === plan.code;
             return (
-              <section key={service.id} className={`farmer-card farmer-service-card ${isCurrent ? "is-current" : ""}`}>
-                <div className="farmer-card-header">
-                  <div className="section-title-with-icon">
-                    <span className="section-icon">
-                      <Icon name="services" size={18} />
-                    </span>
-                    <div>
-                      <h3>{service.service_type}</h3>
-                      <div className="farmer-inline-meta">{formatMoney(service.price, service.currency)}</div>
-                    </div>
-                  </div>
-                  <span className="pill">{formatStatus(service.status)}</span>
+              <section key={plan.id} className={`fw-plan-card${isCurrent ? " current" : ""}`}>
+                <div className="fw-plan-head">
+                  <h3>{plan.name}</h3>
+                  <span className="fw-plan-period">{periodLabel[plan.billing_period] ?? plan.billing_period}</span>
                 </div>
-                <p className="muted">{service.description || "Subscription service provided by AGRIK platform."}</p>
-                <div className="farmer-chip-row">
-                  <span className="chip">{isCurrent ? "Current plan" : "Available"}</span>
-                  <span className="chip">{service.currency ?? "UGX"}</span>
-                </div>
-                <button className="btn" type="button" disabled={Boolean(savingPlan) || isCurrent} onClick={() => subscribeToService(service.service_type)}>
-                  {isCurrent ? "Current plan" : savingPlan === service.service_type ? "Subscribing..." : "Start trial"}
+                <div className="fw-plan-price">{priceLine(plan)}</div>
+                <p className="fw-plan-summary">{plan.summary || "No description provided for this plan yet."}</p>
+                <button
+                  className={`btn${isCurrent ? " ghost" : ""} small`}
+                  type="button"
+                  disabled={Boolean(savingPlan) || isCurrent}
+                  onClick={() => subscribe(plan)}
+                >
+                  {isCurrent ? "Current plan" : savingPlan === plan.code ? "Starting..." : "Choose plan"}
                 </button>
               </section>
             );
-          })
-        )}
-      </div>
+          })}
+        </div>
+      )}
     </section>
   );
 }

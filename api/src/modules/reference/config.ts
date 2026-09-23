@@ -38,6 +38,88 @@ export const SERVICE_TYPES = [
   "extension_advisory",
 ];
 
+/**
+ * How a plan is charged. `seasonal` and `one_off` are not calendar intervals, so they
+ * carry their own `durationDays` instead of deriving an end date from the period.
+ */
+export const BILLING_PERIODS = ["monthly", "quarterly", "annual", "seasonal", "one_off"] as const;
+
+export type BillingPeriod = (typeof BILLING_PERIODS)[number];
+
+/** Days added to a subscription's start date, per period. Null means "use durationDays". */
+export const BILLING_PERIOD_DAYS: Record<BillingPeriod, number | null> = {
+  monthly: 30,
+  quarterly: 91,
+  annual: 365,
+  seasonal: null,
+  one_off: null,
+};
+
+/**
+ * Starter catalog. Seeded once so the console opens with something to edit rather than an
+ * empty table; prices are placeholders for AGRIK to set, not researched market rates.
+ */
+export const DEFAULT_SERVICE_PLANS: {
+  code: string;
+  name: string;
+  summary: string;
+  price: number;
+  billingPeriod: BillingPeriod;
+  durationDays?: number;
+  sortOrder: number;
+}[] = [
+  {
+    code: "advisory_basic",
+    name: "Basic Advisory",
+    summary: "Weather and price alerts by SMS for one farm, plus the crop calendar.",
+    price: 5000,
+    billingPeriod: "monthly",
+    sortOrder: 10,
+  },
+  {
+    code: "advisory_advanced",
+    name: "Advanced Advisory (Image Diagnosis)",
+    summary: "Everything in Basic, plus AI photo diagnosis for pests and disease, and voice replies.",
+    price: 15000,
+    billingPeriod: "monthly",
+    sortOrder: 20,
+  },
+  {
+    code: "advisory_season",
+    name: "Season Advisory",
+    summary: "Advanced Advisory for one full planting season, paid once at the start.",
+    price: 60000,
+    billingPeriod: "seasonal",
+    durationDays: 150,
+    sortOrder: 30,
+  },
+  {
+    code: "market_access",
+    name: "Market Access",
+    summary: "Priority placement in the marketplace and buyer introductions for your listings.",
+    price: 40000,
+    billingPeriod: "quarterly",
+    sortOrder: 40,
+  },
+  {
+    code: "advisory_annual",
+    name: "Advisory Annual",
+    summary: "Advanced Advisory billed once a year, at a discount against the monthly rate.",
+    price: 150000,
+    billingPeriod: "annual",
+    sortOrder: 50,
+  },
+  {
+    code: "diagnosis_single",
+    name: "Single Image Diagnosis",
+    summary: "One AI pest or disease diagnosis with an agronomist-reviewed action plan.",
+    price: 3000,
+    billingPeriod: "one_off",
+    durationDays: 7,
+    sortOrder: 60,
+  },
+];
+
 export const ALERT_TYPES = ["price_threshold", "weather_risk", "pest_outbreak", "market_demand", "system"];
 
 export const ALERT_CHANNELS = ["sms", "voice", "email", "push"];
