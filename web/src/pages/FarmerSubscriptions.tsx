@@ -1,50 +1,74 @@
 import { useEffect, useMemo, useState } from "react";
-import { api } from "../lib/api";
+import { NavLink } from "react-router-dom";
+import { api, type ApiError } from "../lib/api";
 import { Icon } from "../components/Visuals";
 
 type Subscription = {
-  id: number;
+  id?: number;
   plan: string;
+  plan_name?: string | null;
+  billing_period?: string | null;
   status: string;
-  starts_at: string;
+  starts_at?: string;
   ends_at?: string | null;
   provider?: string | null;
 };
 
-// Each tier lists only what it newly unlocks; the displayed "includes" list below is
-// built cumulatively so a higher tier always shows everything the lower tiers include too.
-const planTiers = [
-  {
-    id: "basic",
-    title: "Basic Advisory",
-    summary: "SMS and voice guidance for day-to-day farming decisions.",
-    bestFor: "Farmers getting started with routine decision support",
-    newFeatures: ["Advisory prompts", "Voice and SMS access", "Starter guidance"],
-  },
-  {
-    id: "weather-plus",
-    title: "Weather Plus",
-    summary: "Everything in Basic Advisory, plus localized weather alerts and climate planning support.",
-    bestFor: "Farmers who need stronger timing and risk planning",
-    newFeatures: ["Localized weather view", "Climate signals", "Planning support"],
-  },
-  {
-    id: "pro-intelligence",
-    title: "Pro Intelligence",
-    summary: "Everything in Weather Plus, plus AI advisory, pest and disease alerts, and market intelligence.",
-    bestFor: "Farmers running a more active advisory and market workflow",
-    newFeatures: ["GRIK Brain tools", "Market support", "Pest and disease guidance"],
-  },
-];
+type Plan = {
+  id: number;
+  code: string;
+  name: string;
+  summary?: string | null;
+  price: number;
+  currency: string;
+  billing_period: string;
+  duration_days?: number | null;
+};
 
-const planOptions = planTiers.map((tier, index) => ({
-  ...tier,
-  includes: planTiers.slice(0, index + 1).flatMap((t) => t.newFeatures),
-}));
+const periodLabel: Record<string, string> = {
+  monthly: "Monthly",
+  quarterly: "Quarterly",
+  annual: "Annual",
+  seasonal: "Seasonal",
+  one_off: "One-off",
+};
+
+function formatMoney(value: number, currency: string) {
+  try {
+    return new Intl.NumberFormat(undefined, { style: "currency", currency: currency || "UGX", maximumFractionDigits: 0 }).format(value);
+  } catch {
+    return `${currency || "UGX"} ${value.toLocaleString()}`;
+  }
+}
+
+function priceLine(plan: Plan) {
+  const amount = formatMoney(plan.price, plan.currency);
+  switch (plan.billing_period) {
+    case "monthly":
+      return `${amount} / month`;
+    case "quarterly":
+      return `${amount} / quarter`;
+    case "annual":
+      return `${amount} / year`;
+    case "seasonal":
+      return plan.duration_days ? `${amount} / season · ${plan.duration_days} days` : `${amount} / season`;
+    case "one_off":
+      return plan.duration_days ? `${amount} once · ${plan.duration_days} days access` : `${amount} once`;
+    default:
+      return amount;
+  }
+}
+
+function formatDate(value?: string | null) {
+  if (!value) return "--";
+  const ms = Date.parse(value);
+  return Number.isNaN(ms) ? "--" : new Date(ms).toLocaleDateString();
+}
 
 export default function FarmerSubscriptions() {
   const [current, setCurrent] = useState<Subscription | null>(null);
   const [history, setHistory] = useState<Subscription[]>([]);
+  const [plans, setPlans] = useState<Plan[]>([]);
   const [loading, setLoading] = useState(true);
   const [savingPlan, setSavingPlan] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
@@ -52,222 +76,129 @@ export default function FarmerSubscriptions() {
 
   const loadAll = () => {
     setLoading(true);
-    Promise.allSettled([api.subscription(), api.subscriptionHistory(50)])
-      .then(([currentRes, historyRes]) => {
-        if (currentRes.status === "fulfilled") {
-          setCurrent(currentRes.value as Subscription);
-        } else {
-          setCurrent(null);
-        }
-
-        if (historyRes.status === "fulfilled") {
-          setHistory(historyRes.value as Subscription[]);
-        } else {
-          setHistory([]);
-        }
+    Promise.allSettled([api.subscription(), api.subscriptionHistory(50), api.servicePlans()])
+      .then(([currentRes, historyRes, plansRes]) => {
+        setCurrent(currentRes.status === "fulfilled" ? (currentRes.value as Subscription) : null);
+        setHistory(historyRes.status === "fulfilled" ? (historyRes.value as Subscription[]) : []);
+        setPlans(plansRes.status === "fulfilled" ? plansRes.value.items : []);
       })
       .finally(() => setLoading(false));
   };
 
-  useEffect(() => {
-    loadAll();
-  }, []);
+  useEffect(loadAll, []);
 
-  const subscribe = async (plan: string) => {
-    setSavingPlan(plan);
+  const subscribe = async (plan: Plan) => {
+    setSavingPlan(plan.code);
     setMessage(null);
     setError(null);
     try {
-      await api.startSubscription({
-        plan,
-        status: "trial",
-        provider: "platform",
-      });
-      setMessage(`Subscription started for ${plan}.`);
+      await api.startSubscription({ plan: plan.code, status: "trial", provider: "platform" });
+      setMessage(`${plan.name} is now active on this account.`);
       loadAll();
-    } catch {
-      setError("Unable to start subscription.");
+    } catch (err) {
+      setError((err as ApiError | undefined)?.detail || "Unable to start this plan.");
     } finally {
       setSavingPlan(null);
     }
   };
 
-  const activeHistoryCount = history.filter((item) => item.status.toLowerCase() === "active" || item.status.toLowerCase() === "trial").length;
-  const recommendedPlan = useMemo(() => {
-    if (!current?.plan) return planOptions[0];
-    return planOptions.find((plan) => plan.id !== current.plan) ?? planOptions[0];
-  }, [current?.plan]);
+  // A plan the account held before the catalog existed has no matching row, so name it
+  // from whatever the subscription itself recorded rather than showing a bare code.
+  const currentName = current?.plan_name || current?.plan;
+  const currentIsInCatalog = useMemo(
+    () => (current ? plans.some((plan) => plan.code === current.plan) : true),
+    [current, plans]
+  );
 
-  if (loading) return <section className="farmer-page">Loading subscriptions...</section>;
+  if (loading) return <section className="farmer-page">Loading plans...</section>;
 
   return (
-    <section className="farmer-page">
-      <div className="farmer-page-header farmer-command-header header-actions-only">
-        <div className="farmer-command-actions">
+    <section className="farmer-page fw">
+      <div className="fw-bar">
+        <span className="fw-farm-label">Plan</span>
+        <strong className="fw-plan-current">{currentName ?? "None active"}</strong>
+        {current ? (
+          <span className="fw-farm-meta">
+            {current.status}
+            {current.ends_at ? ` · renews ${formatDate(current.ends_at)}` : ""}
+          </span>
+        ) : (
+          <span className="fw-farm-meta">Choose a plan to activate advisory, alerts, or market support.</span>
+        )}
+        <div className="fw-actions">
           <button className="btn ghost small" type="button" onClick={loadAll}>
             Refresh
           </button>
+          <NavLink to="/dashboard/services" className="btn small">
+            <Icon name="services" size={13} />
+            Services
+          </NavLink>
         </div>
       </div>
 
-      {(message || error) ? <p className={`status ${error ? "error" : ""}`}>{error ?? message}</p> : null}
+      {(message || error) && <p className={`status ${error ? "error" : ""}`}>{error ?? message}</p>}
 
-      <section className="farmer-card farmer-command-hero">
-        <div className="farmer-command-hero-copy">
-          <div className="label">Current subscription</div>
-          <h3>{current?.plan ?? "No active plan"}</h3>
-          <p className="muted">
-            {current?.ends_at
-              ? `Current plan ends on ${new Date(current.ends_at).toLocaleDateString()}.`
-              : "Activate a plan when you are ready to extend advisory, weather, or market support."}
-          </p>
-        </div>
-        <div className="farmer-command-hero-side">
-          <article className="farmer-command-mini-card">
-            <span className="label">Status</span>
-            <strong>{current?.status ?? "inactive"}</strong>
-            <span className="muted">Current plan state</span>
-          </article>
-          <article className="farmer-command-mini-card">
-            <span className="label">History</span>
-            <strong>{history.length}</strong>
-            <span className="muted">Recorded plan events</span>
-          </article>
-        </div>
-      </section>
+      {current && !currentIsInCatalog ? (
+        <p className="status">
+          Your plan &ldquo;{currentName}&rdquo; predates the current catalog. Pick a plan below to move across; nothing
+          changes until you do.
+        </p>
+      ) : null}
 
-      <div className="farmer-kpi-grid">
-        <div className="farmer-kpi-card">
-          <div className="farmer-kpi-head">
-            <span className="kpi-icon">
-              <Icon name="subscriptions" size={16} />
-            </span>
-            <div className="farmer-kpi-label">Current plan</div>
-          </div>
-          <div className="farmer-kpi-value">{current?.plan ?? "None"}</div>
-          <div className="farmer-kpi-meta">{current?.status ?? "inactive"}</div>
-        </div>
-        <div className="farmer-kpi-card">
-          <div className="farmer-kpi-head">
-            <span className="kpi-icon">
-              <Icon name="history" size={16} />
-            </span>
-            <div className="farmer-kpi-label">History depth</div>
-          </div>
-          <div className="farmer-kpi-value">{history.length}</div>
-          <div className="farmer-kpi-meta">Past plan records</div>
-        </div>
-        <div className="farmer-kpi-card">
-          <div className="farmer-kpi-head">
-            <span className="kpi-icon">
-              <Icon name="overview" size={16} />
-            </span>
-            <div className="farmer-kpi-label">Active history</div>
-          </div>
-          <div className="farmer-kpi-value">{activeHistoryCount}</div>
-          <div className="farmer-kpi-meta">Active or trial records</div>
-        </div>
-      </div>
-
-      <div className="farmer-dashboard-grid">
-        <section className="farmer-card">
-          <div className="farmer-card-header">
-            <div>
-              <div className="label">Suggested next plan</div>
-              <h3>{recommendedPlan.title}</h3>
-            </div>
-          </div>
-          <div className="farmer-recommendation-card static">
-            <div>
-              <strong>{recommendedPlan.bestFor}</strong>
-              <p>{recommendedPlan.summary}</p>
-            </div>
-            <span>Recommended</span>
-          </div>
+      {plans.length === 0 ? (
+        <section className="fw-panel">
+          <p className="muted">No plans are available yet.</p>
         </section>
-
-        <section className="farmer-card">
-          <div className="farmer-card-header">
-            <div>
-              <div className="label">Plan status</div>
-              <h3>Current coverage</h3>
-            </div>
-          </div>
-          <div className="farmer-side-summary">
-            <div className="farmer-side-summary-item">
-              <span>Provider</span>
-              <strong>{current?.provider ?? "platform"}</strong>
-            </div>
-            <div className="farmer-side-summary-item">
-              <span>Ends at</span>
-              <strong>{current?.ends_at ? new Date(current.ends_at).toLocaleDateString() : "Not scheduled"}</strong>
-            </div>
-          </div>
-        </section>
-      </div>
-
-      <div className="farmer-service-grid">
-        {planOptions.map((plan) => {
-          const isCurrent = current?.plan === plan.id;
-          return (
-            <section key={plan.id} className={`farmer-card farmer-plan-card ${isCurrent ? "is-current" : ""}`}>
-              <div className="farmer-card-header">
-                <div className="section-title-with-icon">
-                  <span className="section-icon">
-                    <Icon name="subscriptions" size={18} />
-                  </span>
-                  <div>
-                    <h3>{plan.title}</h3>
-                    <div className="farmer-inline-meta">{plan.bestFor}</div>
-                  </div>
+      ) : (
+        <div className="fw-plan-grid">
+          {plans.map((plan) => {
+            const isCurrent = current?.plan === plan.code;
+            return (
+              <section key={plan.id} className={`fw-plan-card${isCurrent ? " current" : ""}`}>
+                <div className="fw-plan-head">
+                  <h3>{plan.name}</h3>
+                  <span className="fw-plan-period">{periodLabel[plan.billing_period] ?? plan.billing_period}</span>
                 </div>
-                <span className="pill">{isCurrent ? "current" : "available"}</span>
-              </div>
-              <p className="muted">{plan.summary}</p>
-              <div className="farmer-chip-row">
-                {plan.includes.map((item) => (
-                  <span key={item} className="chip">
-                    {item}
-                  </span>
-                ))}
-              </div>
-              <button className="btn" type="button" disabled={Boolean(savingPlan) || isCurrent} onClick={() => subscribe(plan.id)}>
-                {isCurrent ? "Current plan" : savingPlan === plan.id ? "Subscribing..." : "Start plan"}
-              </button>
-            </section>
-          );
-        })}
-      </div>
+                <div className="fw-plan-price">{priceLine(plan)}</div>
+                <p className="fw-plan-summary">{plan.summary || "No description provided for this plan yet."}</p>
+                <button
+                  className={`btn${isCurrent ? " ghost" : ""} small`}
+                  type="button"
+                  disabled={Boolean(savingPlan) || isCurrent}
+                  onClick={() => subscribe(plan)}
+                >
+                  {isCurrent ? "Current plan" : savingPlan === plan.code ? "Starting..." : "Choose plan"}
+                </button>
+              </section>
+            );
+          })}
+        </div>
+      )}
 
-      <section className="farmer-card">
-        <div className="farmer-card-header">
-          <div>
-            <div className="label">History</div>
-            <h3>Past subscriptions</h3>
-          </div>
+      <section className="fw-panel">
+        <div className="fw-panel-head">
+          <h2>
+            Billing history <span className="fw-count">{history.length}</span>
+          </h2>
         </div>
         {history.length === 0 ? (
-          <p className="muted">No subscription history yet.</p>
+          <p className="muted">No plan events recorded yet.</p>
         ) : (
-          <div className="farmer-timeline-list">
-            {history.map((item) => (
-              <article key={item.id} className="farmer-timeline-item">
-                <div className="farmer-timeline-dot" aria-hidden="true" />
-                <div className="farmer-timeline-content">
-                  <div className="farmer-card-header">
-                    <div>
-                      <strong>{item.plan}</strong>
-                      <div className="farmer-inline-meta">
-                        Started {new Date(item.starts_at).toLocaleDateString()}
-                        {item.ends_at ? ` | Ended ${new Date(item.ends_at).toLocaleDateString()}` : ""}
-                      </div>
-                    </div>
-                    <span className="pill">{item.status}</span>
-                  </div>
+          <ul className="fw-todo">
+            {history.map((item, index) => (
+              <li key={item.id ?? `${item.plan}-${index}`} className="fw-todo-item">
+                <span className="fw-dot" aria-hidden="true" />
+                <div>
+                  <strong>{item.plan_name || item.plan}</strong>
+                  <p>
+                    {formatDate(item.starts_at)}
+                    {item.ends_at ? ` to ${formatDate(item.ends_at)}` : ""}
+                  </p>
                 </div>
-              </article>
+                <span className="fw-todo-action">{item.status}</span>
+              </li>
             ))}
-          </div>
+          </ul>
         )}
       </section>
     </section>

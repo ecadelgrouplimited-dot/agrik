@@ -277,10 +277,20 @@ router.get(
       orderBy: { startsAt: "desc" },
       take: limit,
     });
+
+    // History should read as plan names, not codes. A plan taken before the catalog
+    // existed has no row, and falls back to whatever code was recorded.
+    const plans = await prisma.servicePlan.findMany({
+      where: { code: { in: [...new Set(subscriptions.map((s) => s.plan))] } },
+      select: { code: true, name: true },
+    });
+    const nameByCode = new Map(plans.map((plan) => [plan.code, plan.name]));
+
     res.json(
       subscriptions.map((s) => ({
         id: s.id,
         plan: s.plan,
+        plan_name: nameByCode.get(s.plan) ?? s.plan,
         status: s.status,
         starts_at: s.startsAt.toISOString(),
         ends_at: s.endsAt?.toISOString() ?? null,

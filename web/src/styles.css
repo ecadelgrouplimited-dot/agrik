@@ -12379,3 +12379,18 @@ a {
     grid-template-columns: 1fr;
   }
 }
+
+/* Inputs carry an intrinsic default width (a date or number field is wider than a text
+   one), which on a narrow screen pushes its grid column past the viewport and scrolls the
+   whole page sideways. Nothing in a form should ever be wider than the box holding it. */
+.field,
+.field > * {
+  min-width: 0;
+}
+
+.field input,
+.field select,
+.field textarea {
+  max-width: 100%;
+  box-sizing: border-box;
+}

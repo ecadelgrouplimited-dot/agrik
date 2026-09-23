@@ -687,6 +687,7 @@ export const api = {
       {
         id: number;
         plan: string;
+        plan_name?: string | null;
         status: string;
         starts_at: string;
         ends_at?: string | null;
