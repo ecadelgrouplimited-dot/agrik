@@ -16,3 +16,7 @@ npm-debug.log*
 .vscode/*
 !.vscode/extensions.json
 .idea/
+
+# Local test images and device screenshots — kept on disk, out of the repo.
+web/src/assets/tests/
+web/src/mobile_current_screenshots/
