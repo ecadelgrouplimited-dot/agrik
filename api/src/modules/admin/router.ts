@@ -5,10 +5,68 @@ import { prisma } from "../../lib/prisma.js";
 import { asyncHandler } from "../../middleware/errorHandler.js";
 import { requireAdminAuth } from "../../middleware/adminAuth.js";
 import { notFound } from "../../lib/http-error.js";
+import { listingOut, serviceOut } from "../market/router.js";
 import { CROPS, CURRENCIES, PRICE_SOURCES, SERVICE_TYPES, ALERT_TYPES, ALERT_CHANNELS } from "../reference/config.js";
 
 const router = Router();
 router.use(requireAdminAuth);
+
+/**
+ * The console reads the same snake_case shape the rest of the API speaks. These endpoints
+ * used to hand back raw Prisma rows, so every field the UI read by its documented name
+ * came back undefined — which crashed the alerts and overview pages outright.
+ */
+function alertOut(alert: {
+  id: number;
+  phone: string;
+  alertType: string;
+  crop: string | null;
+  threshold: number | null;
+  channel: string | null;
+  active: boolean;
+  minIntervalHours: number | null;
+  district: string | null;
+  parish: string | null;
+  lastTriggeredAt: Date | null;
+  createdAt: Date;
+}) {
+  return {
+    id: alert.id,
+    target_phone: alert.phone,
+    alert_type: alert.alertType,
+    crop: alert.crop,
+    threshold: alert.threshold,
+    channel: alert.channel,
+    active: alert.active,
+    min_interval_hours: alert.minIntervalHours ?? 0,
+    location: { district: alert.district, parish: alert.parish },
+    last_notified_at: alert.lastTriggeredAt?.toISOString() ?? null,
+    created_at: alert.createdAt.toISOString(),
+  };
+}
+
+function priceOut(price: {
+  id: number;
+  crop: string;
+  market: string | null;
+  district: string | null;
+  price: number;
+  currency: string;
+  source: string | null;
+  capturedAt: Date;
+}) {
+  return {
+    id: price.id,
+    crop: price.crop,
+    market: price.market,
+    district: price.district,
+    price: price.price,
+    currency: price.currency,
+    source: price.source,
+    captured_at: price.capturedAt.toISOString(),
+  };
+}
+
 
 async function logActivity(adminId: string, action: string, details: Record<string, unknown>, ip: string | undefined) {
   await prisma.adminActivity.create({
@@ -44,20 +102,33 @@ router.get(
 router.get(
   "/users",
   asyncHandler(async (req, res) => {
+    // The console sends role, status, verification and a page window on every request.
+    // Only `search` used to be read here, so its filters and its Prev/Next were inert.
     const search = String(req.query.search ?? "").trim();
+    const role = String(req.query.role ?? "").trim();
+    const status = String(req.query.status ?? "").trim();
+    const verificationStatus = String(req.query.verification_status ?? "").trim();
+    const limit = Math.min(Math.max(Number(req.query.limit ?? 500) || 500, 1), 500);
+    const offset = Math.max(Number(req.query.offset ?? 0) || 0, 0);
+
+    const where: Prisma.UserWhereInput = {};
+    if (search) {
+      where.OR = [
+        { phone: { contains: search, mode: "insensitive" } },
+        { email: { contains: search, mode: "insensitive" } },
+        { identity: { fullName: { contains: search, mode: "insensitive" } } },
+      ];
+    }
+    if (role) where.role = role as Prisma.UserWhereInput["role"];
+    if (status) where.status = status;
+    if (verificationStatus) where.verificationStatus = verificationStatus;
+
     const users = await prisma.user.findMany({
-      where: search
-        ? {
-            OR: [
-              { phone: { contains: search, mode: "insensitive" } },
-              { email: { contains: search, mode: "insensitive" } },
-              { identity: { fullName: { contains: search, mode: "insensitive" } } },
-            ],
-          }
-        : undefined,
+      where,
       include: { identity: true },
       orderBy: { createdAt: "desc" },
-      take: 500,
+      take: limit,
+      skip: offset,
     });
 
     const items = await Promise.all(
@@ -139,7 +210,7 @@ router.get(
       orderBy: { createdAt: "desc" },
       take: 500,
     });
-    res.json({ items });
+    res.json({ items: items.map(listingOut) });
   })
 );
 
@@ -169,7 +240,7 @@ router.get(
   "/alerts",
   asyncHandler(async (_req, res) => {
     const items = await prisma.marketAlert.findMany({ orderBy: { createdAt: "desc" }, take: 500 });
-    res.json({ items });
+    res.json({ items: items.map(alertOut) });
   })
 );
 
@@ -275,7 +346,7 @@ router.get(
   "/prices",
   asyncHandler(async (_req, res) => {
     const items = await prisma.marketPrice.findMany({ orderBy: { capturedAt: "desc" }, take: 500 });
-    res.json({ items });
+    res.json({ items: items.map(priceOut) });
   })
 );
 
@@ -336,7 +407,7 @@ router.get(
   "/services",
   asyncHandler(async (_req, res) => {
     const items = await prisma.marketService.findMany({ orderBy: { createdAt: "desc" }, take: 500 });
-    res.json({ items });
+    res.json({ items: items.map(serviceOut) });
   })
 );
 

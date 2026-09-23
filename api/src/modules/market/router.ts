@@ -8,7 +8,7 @@ import { badRequest, notFound } from "../../lib/http-error.js";
 
 const router = Router();
 
-function listingOut(listing: {
+export function listingOut(listing: {
   id: number;
   userId: string | null;
   role: string;
@@ -237,7 +237,7 @@ router.post(
   })
 );
 
-function serviceOut(service: {
+export function serviceOut(service: {
   id: number;
   userId: string | null;
   serviceType: string;

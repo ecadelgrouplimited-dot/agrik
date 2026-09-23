@@ -147,19 +147,33 @@ async function seedDistricts() {
 }
 
 async function seedAdmin() {
-  const email = process.env.SEED_ADMIN_EMAIL;
+  // Sign-in lowercases the address before looking it up, so the seed has to store it the
+  // same way. Seeding "Ops@Agrik.co" and then being unable to sign in is not obvious.
+  const email = process.env.SEED_ADMIN_EMAIL?.trim().toLowerCase();
   const password = process.env.SEED_ADMIN_PASSWORD;
   if (!email || !password) {
     console.log("Skipping admin seed: set SEED_ADMIN_EMAIL and SEED_ADMIN_PASSWORD to create one.");
     return;
   }
+
+  const existing = await prisma.admin.findUnique({ where: { email } });
   const passwordHash = await bcrypt.hash(password, 12);
-  await prisma.admin.upsert({
-    where: { email },
-    update: {},
-    create: { email, passwordHash, status: "active", verificationStatus: "verified" },
+
+  if (existing) {
+    // Re-running the seed is the documented way to reset a forgotten console password,
+    // so it has to actually write the new hash. It also re-activates a disabled account.
+    await prisma.admin.update({
+      where: { email },
+      data: { passwordHash, status: "active", verificationStatus: "verified" },
+    });
+    console.log(`Updated the password for existing admin ${email}.`);
+    return;
+  }
+
+  await prisma.admin.create({
+    data: { email, passwordHash, status: "active", verificationStatus: "verified" },
   });
-  console.log(`Seeded admin account for ${email}.`);
+  console.log(`Created admin account for ${email}.`);
 }
 
 async function main() {
