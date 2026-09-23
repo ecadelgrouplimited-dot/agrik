@@ -78,6 +78,9 @@ SEED_ADMIN_EMAIL=you@agrik.co SEED_ADMIN_PASSWORD='CHANGE_ME' \
   sudo -u agrik -E npx tsx prisma/seed.ts
 ```
 
+Signing in to the console needs working SMTP — the second step emails a
+one-time code and there is no bypass. See [ADMIN.md](ADMIN.md).
+
 ## 5. Frontend build
 
 Build with the production API URL baked in (Vite inlines `VITE_*` vars at
