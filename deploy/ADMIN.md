@@ -65,9 +65,13 @@ sudo systemctl restart agrik-api
 
 ## Creating and resetting admins
 
-There is no sign-up, no invite flow, and **no password change inside the
-console** — an admin cannot rotate their own credentials from `/admin`. Admins
-are created, and passwords rotated, on the server with the seed script:
+An admin changes their own password in the console, under
+**Activity → Change your password**. It asks for the current password, so a
+borrowed session cannot lock the real admin out, and it records both successes
+and failures in the audit log.
+
+There is still no sign-up and no invite flow. Creating an admin, or resetting a
+password nobody remembers, happens on the server with the seed script:
 
 ```bash
 cd /var/www/agrik/api
@@ -78,8 +82,8 @@ SEED_ADMIN_EMAIL=ops@agrik.co SEED_ADMIN_PASSWORD='CHANGE_ME' \
 - The email is lowercased before it is stored, because sign-in lowercases it
   before looking it up. `Ops@Agrik.co` and `ops@agrik.co` are the same account.
 - Running it again for an **existing** email **resets that admin's password**
-  and re-activates the account. This is the only way to change a console
-  password, whether it was forgotten or is simply being rotated.
+  and re-activates the account. This is the recovery path for a password nobody
+  remembers; routine rotation belongs in the console.
 - The script also seeds reference districts, which is idempotent.
 
 To disable an admin without deleting them, set their status away from
@@ -126,6 +130,8 @@ too:
 | `admin_login_code_sent` | Password accepted, code emailed |
 | `admin_signed_in` | Code accepted, session issued |
 | `admin_login_failed` | Wrong password, or wrong code (`details.reason`) |
+| `admin_password_changed` | An admin changed their own password |
+| `admin_password_change_failed` | A change was attempted with the wrong current password |
 | `user_updated`, `listing_updated`, `price_created`, `price_updated`, `alert_created`, `alert_bulk_created`, `alert_updated`, `alert_deleted`, `service_created`, `service_updated`, `service_deleted`, `services_seeded` | The corresponding change |
 
 The log is append-only from the application's side — nothing in the console

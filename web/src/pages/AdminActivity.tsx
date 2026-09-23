@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import AdminActiveDateChips from "../components/AdminActiveDateChips";
 import { api } from "../lib/api";
+import AdminPasswordCard from "../components/AdminPasswordCard";
 
 type Activity = {
   id: number;
@@ -319,6 +320,8 @@ export default function AdminActivity() {
           </div>
         )}
       </section>
+
+      <AdminPasswordCard />
     </section>
   );
 }

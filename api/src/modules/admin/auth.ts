@@ -6,7 +6,7 @@ import { asyncHandler } from "../../middleware/errorHandler.js";
 import { requireAdminAuth } from "../../middleware/adminAuth.js";
 import { badGateway, badRequest, notFound, tooManyRequests, unauthorized } from "../../lib/http-error.js";
 import { checkThrottle, clearThrottle, recordFailure, type ThrottleOptions } from "../../lib/throttle.js";
-import { generateNumericCode, hashCode, verifyCode, verifyPassword } from "../../lib/password.js";
+import { generateNumericCode, hashCode, hashPassword, verifyCode, verifyPassword } from "../../lib/password.js";
 import { signAdminToken } from "../../lib/jwt.js";
 import { normalizeEmail } from "../auth/phone.js";
 import { sendAdminOtpEmail } from "../../lib/mailer.js";
@@ -134,6 +134,50 @@ router.post(
 
     const token = signAdminToken(admin.id);
     res.json({ token, admin: toAdminOut(admin) });
+  })
+);
+
+const changePasswordSchema = z.object({
+  current_password: z.string().min(1),
+  new_password: z.string().min(10, "Use at least 10 characters."),
+});
+
+/**
+ * Rotating a console password used to mean shelling into the server and re-running the
+ * seed, which meant in practice it did not happen. The current password is required, so
+ * a borrowed session cannot lock the real admin out.
+ */
+router.post(
+  "/change-password",
+  requireAdminAuth,
+  asyncHandler(async (req, res) => {
+    const body = changePasswordSchema.parse(req.body);
+    const admin = await prisma.admin.findUnique({ where: { id: req.adminId! } });
+    if (!admin) throw notFound("Admin not found.");
+
+    const key = throttleKey("admin-change-password", admin.email, req.ip);
+    const verdict = checkThrottle(key, PASSWORD_THROTTLE);
+    if (!verdict.allowed) {
+      throw tooManyRequests(`Too many attempts. Try again in ${Math.ceil(verdict.retryAfterSeconds / 60)} minute(s).`);
+    }
+
+    const valid = await verifyPassword(body.current_password, admin.passwordHash);
+    if (!valid) {
+      recordFailure(key, PASSWORD_THROTTLE);
+      await logAdminActivity(admin.id, "admin_password_change_failed", {}, req.ip);
+      throw unauthorized("That is not your current password.");
+    }
+    if (body.new_password === body.current_password) {
+      throw badRequest("The new password must be different from the current one.");
+    }
+
+    clearThrottle(key);
+    await prisma.admin.update({ where: { id: admin.id }, data: { passwordHash: await hashPassword(body.new_password) } });
+    await logAdminActivity(admin.id, "admin_password_changed", {}, req.ip);
+
+    // The session token stays valid: it is bound to the admin id, not the password, and
+    // forcing a re-login here would send the operator back through the email code.
+    res.json({ status: "updated" });
   })
 );
 

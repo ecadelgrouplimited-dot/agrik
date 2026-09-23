@@ -448,6 +448,11 @@ export const api = {
         body: JSON.stringify(payload),
       }
     ),
+  adminChangePassword: (payload: { current_password: string; new_password: string }) =>
+    adminRequest<{ status: string }>("/admin/change-password", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
   adminMe: () =>
     adminRequest<{ id: string; email: string; status: string; verification_status: string; created_at: string }>("/admin/me"),
   marketSummary: () => request<{ listings: number; offers: number; services: number; alerts: number }>("/market/summary"),
