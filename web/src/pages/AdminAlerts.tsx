@@ -447,14 +447,6 @@ export default function AdminAlerts() {
 
   return (
     <section className="admin-page admin-alerts-page">
-      <div className="admin-page-header">
-        <div>
-          <div className="label">Alerts</div>
-          <h1>Alert management</h1>
-          <p className="muted">Compose alerts from templates, choose the right audience mode, and send with clear targeting context.</p>
-        </div>
-      </div>
-
       {error && <p className="status error">{error}</p>}
       {statusMessage && <p className="status">{statusMessage}</p>}
       <AdminActiveDateChips from={dateRange.from} to={dateRange.to} />
@@ -790,32 +782,51 @@ export default function AdminAlerts() {
             {filteredAlerts.length === 0 ? (
               <p className="admin-empty">No alerts configured.</p>
             ) : (
-              <div className="admin-table">
-                {filteredAlerts.map((alert) => (
-                  <div key={alert.id} className={`admin-row ${selectedAlert?.id === alert.id ? "admin-price-row active" : ""}`} onClick={() => setSelectedAlertId(alert.id)}>
-                    <div className="admin-row-main">
-                      <div className="tile-title">{alert.alert_type.toUpperCase()}</div>
-                      <div className="tile-meta">
-                        {alert.target_phone ?? alert.user_id} | {alert.crop ?? "--"} | {alert.threshold ?? "--"} | {alert.channel ?? "sms"}
-                      </div>
-                      <div className="admin-row-meta">
-                        {alert.location?.district ?? "--"} | Every {alert.min_interval_hours}h | Last sent {formatDate(alert.last_notified_at)} | Created {formatDate(alert.created_at)}
-                      </div>
-                    </div>
-                    <div className="admin-actions">
-                      <span className={`pill ${alert.active ? "" : "pill-muted"}`}>{alert.active ? "active" : "paused"}</span>
-                      <button className="btn ghost small" type="button" onClick={(event) => { event.stopPropagation(); startEdit(alert); }}>
-                        Edit
-                      </button>
-                      <button className="btn ghost small" type="button" onClick={(event) => { event.stopPropagation(); toggleAlertActive(alert, !alert.active); }}>
-                        {alert.active ? "Pause" : "Resume"}
-                      </button>
-                      <button className="btn ghost small" type="button" onClick={(event) => { event.stopPropagation(); handleDelete(alert.id); }}>
-                        Delete
-                      </button>
-                    </div>
-                  </div>
-                ))}
+              <div className="admin-grid-wrap">
+                <table className="admin-grid">
+                  <thead>
+                    <tr>
+                      <th>Type</th>
+                      <th>Target</th>
+                      <th>Crop</th>
+                      <th className="admin-grid-num">Threshold</th>
+                      <th>Channel</th>
+                      <th>District</th>
+                      <th>State</th>
+                      <th aria-label="Actions" />
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredAlerts.map((alert) => (
+                      <tr
+                        key={alert.id}
+                        className={selectedAlert?.id === alert.id ? "active" : ""}
+                        onClick={() => setSelectedAlertId(alert.id)}
+                      >
+                        <td><strong>{(alert.alert_type ?? "").toUpperCase() || "--"}</strong></td>
+                        <td>{alert.target_phone ?? alert.user_id ?? "--"}</td>
+                        <td>{alert.crop ?? "--"}</td>
+                        <td className="admin-grid-num">{alert.threshold ?? "--"}</td>
+                        <td>{alert.channel ?? "sms"}</td>
+                        <td>{alert.location?.district ?? "--"}</td>
+                        <td>
+                          <span className={`pill ${alert.active ? "" : "pill-muted"}`}>{alert.active ? "active" : "paused"}</span>
+                        </td>
+                        <td className="admin-grid-actions">
+                          <button className="btn ghost small" type="button" onClick={(event) => { event.stopPropagation(); startEdit(alert); }}>
+                            Edit
+                          </button>
+                          <button className="btn ghost small" type="button" onClick={(event) => { event.stopPropagation(); toggleAlertActive(alert, !alert.active); }}>
+                            {alert.active ? "Pause" : "Resume"}
+                          </button>
+                          <button className="btn ghost small" type="button" onClick={(event) => { event.stopPropagation(); handleDelete(alert.id); }}>
+                            Delete
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             )}
           </section>
@@ -829,7 +840,7 @@ export default function AdminAlerts() {
               <div className="admin-card-header">
                 <div>
                   <div className="label">Alert detail</div>
-                  <h3>{selectedAlert.alert_type.toUpperCase()}</h3>
+                  <h3>{(selectedAlert.alert_type ?? "").toUpperCase() || "Alert"}</h3>
                 </div>
                 <span className={`pill ${selectedAlert.active ? "" : "pill-muted"}`}>{selectedAlert.active ? "Active" : "Paused"}</span>
               </div>

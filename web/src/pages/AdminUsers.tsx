@@ -54,18 +54,7 @@ type DirectoryViewMode = "list" | "cards";
 const PAGE_SIZE_OPTIONS = [25, 50, 100];
 
 const USER_SAVED_VIEWS = [
-  {
-    id: "pending-verification",
-    label: "Pending verification",
-    filters: { verification: "unverified", activity: "", role: "", status: "", district: "", onboarding: "", market: "" },
-    search: "",
-  },
-  {
-    id: "inactive-recent",
-    label: "Inactive recent",
-    filters: { verification: "", activity: "inactive_30d", role: "", status: "", district: "", onboarding: "", market: "" },
-    search: "",
-  },
+  // Only combinations that the single-filter queue chips above cannot express on their own.
   {
     id: "providers-no-footprint",
     label: "Providers no footprint",
@@ -331,7 +320,7 @@ export default function AdminUsers() {
 
   const reviewQueues = useMemo(
     () => [
-      { id: "verification", label: "Pending verification", active: filters.verification === "unverified", count: users.filter((u) => u.verification_status === "unverified").length, apply: () => setFilters((prev) => ({ ...prev, verification: prev.verification === "unverified" ? "" : "unverified" })) },
+      { id: "verification", label: "Pending verification", active: filters.verification === "pending", count: users.filter((u) => u.verification_status === "pending").length, apply: () => setFilters((prev) => ({ ...prev, verification: prev.verification === "pending" ? "" : "pending" })) },
       { id: "inactive", label: "Inactive 30d", active: filters.activity === "inactive_30d", count: users.filter((u) => u.last_login_at && !withinDays(u.last_login_at, 30)).length, apply: () => setFilters((prev) => ({ ...prev, activity: prev.activity === "inactive_30d" ? "" : "inactive_30d" })) },
       { id: "providers", label: "Providers", active: filters.role === "service_provider", count: users.filter((u) => u.role === "service_provider").length, apply: () => setFilters((prev) => ({ ...prev, role: prev.role === "service_provider" ? "" : "service_provider" })) },
       { id: "market", label: "With footprint", active: filters.market === "with_market", count: withMarketFootprint, apply: () => setFilters((prev) => ({ ...prev, market: prev.market === "with_market" ? "" : "with_market" })) },
@@ -455,14 +444,6 @@ export default function AdminUsers() {
 
   return (
     <section className="admin-page admin-users-page">
-      <div className="admin-page-header">
-        <div>
-          <div className="label">Users</div>
-          <h1>User intelligence desk</h1>
-          <p className="muted">Rich profile visibility, activity context, and fast account control in one surface.</p>
-        </div>
-      </div>
-
       {error && <p className="status error">{error}</p>}
       {statusMessage && <p className="status">{statusMessage}</p>}
       <AdminActiveDateChips from={dateRange.from} to={dateRange.to} />
@@ -491,11 +472,8 @@ export default function AdminUsers() {
       </div>
 
       <section className="admin-card">
-        <div className="admin-card-header">
-          <div>
-            <div className="label">Filters</div>
-            <h3>Modern user filters</h3>
-          </div>
+        <div className="admin-card-header compact">
+          <h3>Filters</h3>
           <div className="admin-user-role-chips">
             <button className="btn ghost small" type="button" onClick={exportFilteredUsers}>
               Export filtered
@@ -546,7 +524,7 @@ export default function AdminUsers() {
             >
               <option value="">All verification</option>
               <option value="verified">verified</option>
-              <option value="unverified">unverified</option>
+              <option value="pending">pending</option>
             </select>
           </label>
           <label className="field">
@@ -606,9 +584,6 @@ export default function AdminUsers() {
               {queue.label} <strong>{queue.count}</strong>
             </button>
           ))}
-        </div>
-
-        <div className="admin-chip-row">
           {USER_SAVED_VIEWS.map((view) => (
             <button
               key={view.id}
@@ -774,7 +749,7 @@ export default function AdminUsers() {
                         onChange={(event) => handleUserEdit(user.id, "verification_status", event.target.value)}
                       >
                         <option value="verified">verified</option>
-                        <option value="unverified">unverified</option>
+                        <option value="pending">pending</option>
                       </select>
                     </label>
                     <button className="btn small" type="button" onClick={() => handleUserSave(user.id)} disabled={userSaving[user.id]}>
@@ -824,126 +799,60 @@ export default function AdminUsers() {
             })}
           </div>
         ) : (
-          <div className="admin-user-list">
-            {filteredUsers.map((user) => {
-              const crops = safeList(user.crops);
-              const focus = safeList(user.focus_crops);
-              const services = safeList(user.service_categories);
-              const marketTotal = (user.market_listings || 0) + (user.market_alerts || 0) + (user.market_offers || 0);
-              return (
-                <article key={user.id} className={`admin-user-list-row ${selectedUser?.id === user.id ? "active" : ""}`} onClick={() => setSelectedUserId(user.id)}>
-                  <div className="admin-user-list-main">
-                    <div>
-                      <label className="admin-check" onClick={(event) => event.stopPropagation()}>
-                        <input type="checkbox" checked={selectedUserIds.includes(user.id)} onChange={() => toggleSelectedUser(user.id)} />
-                        <span />
-                      </label>
-                      <div className="tile-title">{user.full_name || user.phone}</div>
-                      <div className="tile-meta">
-                        {user.phone} | {user.email || "No email mapped"}
-                      </div>
-                    </div>
-
-                  <div className="admin-user-meta-line">
-                    <span>
-                      {user.district || "--"} / {user.parish || "--"}
-                    </span>
-                    <span>{titleCase(user.onboarding_stage || "completed")}</span>
-                    <span className="pill">{roleLabel(user.role)}</span>
-                    <span className={`pill ${user.verification_status === "verified" ? "" : "pill-muted"}`}>{user.verification_status}</span>
-                  </div>
-
-                  <div className="admin-user-stats compact">
-                    <span>L {user.market_listings || 0}</span>
-                    <span>A {user.market_alerts || 0}</span>
-                    <span>O {user.market_offers || 0}</span>
-                    <span>C {user.chat_messages || 0}</span>
-                    <span>F {marketTotal}</span>
-                  </div>
-
-                  <div className="admin-user-row-meta">
-                    Joined {formatDate(user.created_at)} | Last login {formatDateTime(user.last_login_at)}
-                  </div>
-                  </div>
-
-                  <div className="admin-user-list-actions">
-                    <label className="admin-user-inline-field">
-                      Role
-                      <select value={userEdits[user.id]?.role ?? user.role} onChange={(event) => handleUserEdit(user.id, "role", event.target.value)}>
-                        <option value="farmer">farmer</option>
-                        <option value="buyer">buyer</option>
-                        <option value="offtaker">offtaker</option>
-                        <option value="service_provider">service_provider</option>
-                        <option value="input_supplier">input_supplier</option>
-                        <option value="admin">admin</option>
-                      </select>
-                    </label>
-                    <label className="admin-user-inline-field">
-                      Status
-                      <select
-                        value={userEdits[user.id]?.status ?? user.status}
-                        onChange={(event) => handleUserEdit(user.id, "status", event.target.value)}
-                      >
-                        <option value="active">active</option>
-                        <option value="pending">pending</option>
-                        <option value="locked">locked</option>
-                      </select>
-                    </label>
-                    <label className="admin-user-inline-field">
-                      Verification
-                      <select
-                        value={userEdits[user.id]?.verification_status ?? user.verification_status}
-                        onChange={(event) => handleUserEdit(user.id, "verification_status", event.target.value)}
-                      >
-                        <option value="verified">verified</option>
-                        <option value="unverified">unverified</option>
-                      </select>
-                    </label>
-                    <button className="btn small" type="button" onClick={() => handleUserSave(user.id)} disabled={userSaving[user.id]}>
-                      {userSaving[user.id] ? "Saving..." : "Save"}
-                    </button>
-                  </div>
-
-                  <div className="admin-user-hover-card admin-user-hover-card-list">
-                    <div className="admin-user-hover-head">
-                      <strong>{user.full_name || user.phone}</strong>
-                      <span>{titleCase(user.onboarding_stage || "completed")}</span>
-                    </div>
-                    <div className="admin-user-hover-item">
-                      <span>Organization</span>
-                      <strong>{user.organization_name || "--"}</strong>
-                    </div>
-                    <div className="admin-user-hover-item">
-                      <span>Primary crops</span>
-                      <strong>{crops.slice(0, 4).join(", ") || "--"}</strong>
-                    </div>
-                    <div className="admin-user-hover-item">
-                      <span>Focus crops</span>
-                      <strong>{focus.slice(0, 4).join(", ") || "--"}</strong>
-                    </div>
-                    <div className="admin-user-hover-item">
-                      <span>Service categories</span>
-                      <strong>{services.slice(0, 3).join(", ") || "--"}</strong>
-                    </div>
-                    <div className="admin-user-hover-activity">
-                      <div className="label">Recent admin activity</div>
-                      {user.recent_activity && user.recent_activity.length > 0 ? (
-                        <ul>
-                          {user.recent_activity.slice(0, 3).map((item, index) => (
-                            <li key={`${user.id}-${item.action}-${index}`}>
-                              <strong>{activityActionLabel(item.action)}</strong>
-                              <span>{item.detail_summary || formatDateTime(item.created_at)}</span>
-                            </li>
-                          ))}
-                        </ul>
-                      ) : (
-                        <p className="admin-empty">No recent admin actions linked to this user.</p>
-                      )}
-                    </div>
-                  </div>
-                </article>
-              );
-            })}
+          // A directory is a table. Each account used to be a ~180px card carrying its own
+          // three edit dropdowns, which put 46 users over 10,000px of scroll. Editing now
+          // lives once, in the detail panel, against whichever row is selected.
+          <div className="admin-grid-wrap">
+            <table className="admin-grid">
+              <thead>
+                <tr>
+                  <th className="admin-grid-check" aria-label="Select" />
+                  <th>Account</th>
+                  <th>Role</th>
+                  <th>Location</th>
+                  <th>Verification</th>
+                  <th>Status</th>
+                  <th className="admin-grid-num" title="Listings / alerts / offers">Footprint</th>
+                  <th>Last login</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredUsers.map((user) => {
+                  const marketTotal = (user.market_listings || 0) + (user.market_alerts || 0) + (user.market_offers || 0);
+                  return (
+                    <tr
+                      key={user.id}
+                      className={selectedUser?.id === user.id ? "active" : ""}
+                      onClick={() => setSelectedUserId(user.id)}
+                    >
+                      <td className="admin-grid-check">
+                        <label className="admin-check" onClick={(event) => event.stopPropagation()}>
+                          <input type="checkbox" checked={selectedUserIds.includes(user.id)} onChange={() => toggleSelectedUser(user.id)} />
+                          <span />
+                        </label>
+                      </td>
+                      <td>
+                        <strong>{user.full_name || user.phone}</strong>
+                        <span className="admin-grid-sub">
+                          {user.phone}
+                          {user.email ? ` · ${user.email}` : ""}
+                        </span>
+                      </td>
+                      <td>{roleLabel(user.role)}</td>
+                      <td>{user.district || "--"}</td>
+                      <td>
+                        <span className={`pill ${user.verification_status === "verified" ? "" : "pill-muted"}`}>
+                          {user.verification_status}
+                        </span>
+                      </td>
+                      <td>{user.status}</td>
+                      <td className="admin-grid-num">{marketTotal}</td>
+                      <td>{user.last_login_at ? formatDate(user.last_login_at) : "Never"}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
         )}
 
@@ -1002,6 +911,50 @@ export default function AdminUsers() {
               <div>
                 <span className="label">Last login</span>
                 <strong>{formatDateTime(selectedUser.last_login_at)}</strong>
+              </div>
+            </div>
+
+            <div className="admin-detail-block">
+              <div className="label">Account controls</div>
+              <div className="admin-user-controls">
+                <label className="admin-user-inline-field">
+                  Role
+                  <select
+                    value={userEdits[selectedUser.id]?.role ?? selectedUser.role}
+                    onChange={(event) => handleUserEdit(selectedUser.id, "role", event.target.value)}
+                  >
+                    <option value="farmer">farmer</option>
+                    <option value="buyer">buyer</option>
+                    <option value="offtaker">offtaker</option>
+                    <option value="service_provider">service_provider</option>
+                    <option value="input_supplier">input_supplier</option>
+                    <option value="admin">admin</option>
+                  </select>
+                </label>
+                <label className="admin-user-inline-field">
+                  Status
+                  <select
+                    value={userEdits[selectedUser.id]?.status ?? selectedUser.status}
+                    onChange={(event) => handleUserEdit(selectedUser.id, "status", event.target.value)}
+                  >
+                    <option value="active">active</option>
+                    <option value="pending">pending</option>
+                    <option value="locked">locked</option>
+                  </select>
+                </label>
+                <label className="admin-user-inline-field">
+                  Verification
+                  <select
+                    value={userEdits[selectedUser.id]?.verification_status ?? selectedUser.verification_status}
+                    onChange={(event) => handleUserEdit(selectedUser.id, "verification_status", event.target.value)}
+                  >
+                    <option value="verified">verified</option>
+                    <option value="pending">pending</option>
+                  </select>
+                </label>
+                <button className="btn small" type="button" onClick={() => handleUserSave(selectedUser.id)} disabled={userSaving[selectedUser.id]}>
+                  {userSaving[selectedUser.id] ? "Saving..." : "Save changes"}
+                </button>
               </div>
             </div>
 

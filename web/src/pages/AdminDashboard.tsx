@@ -458,97 +458,55 @@ export default function AdminDashboard() {
 
   return (
     <section className="admin-page admin-overview-neo">
-      <div className="admin-page-header">
-        <div>
-          <div className="label">Overview</div>
-          <h1>Admin command center</h1>
-          <p className="muted">Operational visibility for trust, moderation, pricing, alerts, and admin risk.</p>
-        </div>
-        <div className="admin-page-actions">
-          <div className="admin-export-actions">
-            <button className="btn ghost small" type="button" onClick={exportUsers}>
-              Export users
-            </button>
-            <button className="btn ghost small" type="button" onClick={exportActivity}>
-              Export audit
-            </button>
-          </div>
-          <button className="btn ghost small" type="button" onClick={refreshAll}>
-            Refresh data
-          </button>
-          <span className="admin-meta">Last refresh {lastRefresh ?? "--"}</span>
-        </div>
-      </div>
-
       {error && <p className="status error">{error}</p>}
 
-      <section className="admin-command-hero">
-        <div className="admin-command-hero-main">
-          <div className="label">Action board</div>
-          <h2>Start with the queues that need intervention, not with raw totals.</h2>
-          <p className="muted">
-            Verification backlog, weak listings, stale prices, paused alerts, and sensitive admin actions are surfaced
-            first so the next move is obvious.
-          </p>
-
-          <div className="admin-range-toggle" role="group" aria-label="Dashboard date range">
-            {[7, 30, 90].map((days) => (
-              <button
-                key={days}
-                type="button"
-                className={`admin-range-chip ${rangeDays === days ? "active" : ""}`}
-                onClick={() => setRangeDays(days as 7 | 30 | 90)}
-              >
-                {days}d
-              </button>
-            ))}
-          </div>
-
-          <div className="admin-quick-action-row">
-            <button className="btn" type="button" onClick={() => navigate(buildFilteredPath("/admin/users", { verification_status: "pending" }))}>
-              Review users
+      {/* One control row instead of a hero. The four queue cards it used to carry were the
+          same records already listed under "Action queues" a screen below. */}
+      <div className="admin-controls">
+        <div className="admin-range-toggle" role="group" aria-label="Dashboard date range">
+          {[7, 30, 90].map((days) => (
+            <button
+              key={days}
+              type="button"
+              className={`admin-range-chip ${rangeDays === days ? "active" : ""}`}
+              onClick={() => setRangeDays(days as 7 | 30 | 90)}
+            >
+              {days}d
             </button>
-            <button className="btn" type="button" onClick={() => navigate(buildFilteredPath("/admin/listings", { queue: "quality" }))}>
-              Moderate listings
-            </button>
-            <button className="btn ghost" type="button" onClick={() => navigate("/admin/prices")}>
-              Publish prices
-            </button>
-            <button className="btn ghost" type="button" onClick={() => navigate("/admin/activity")}>
-              Open audit
-            </button>
-          </div>
-
-          <div className="admin-command-notes">
-            <span>{formatCompact(usersTotal)} users</span>
-            <span>{formatCompact(openListings.length)} open listings</span>
-            <span>{formatCompact(highSignalActivity.length)} sensitive actions in view</span>
-          </div>
+          ))}
         </div>
 
-        <div className="admin-command-hero-side">
-          <div className="admin-card-header">
-            <div>
-              <div className="label">Immediate attention</div>
-              <h3>What needs review now</h3>
-            </div>
-          </div>
-          <div className="admin-attention-list">
-            {queueCards.slice(0, 4).map((item) => (
-              <button key={item.label} className="admin-attention-card" type="button" onClick={() => navigate(item.path)}>
-                <span className="admin-attention-icon">
-                  <Icon name={item.icon} size={16} />
-                </span>
-                <div>
-                  <strong>{item.label}</strong>
-                  <p>{item.meta}</p>
-                </div>
-                <b>{formatInteger(item.value)}</b>
-              </button>
-            ))}
-          </div>
+        <div className="admin-quick-action-row">
+          <button className="btn small" type="button" onClick={() => navigate(buildFilteredPath("/admin/users", { verification_status: "pending" }))}>
+            Review users
+          </button>
+          <button className="btn small" type="button" onClick={() => navigate(buildFilteredPath("/admin/listings", { queue: "quality" }))}>
+            Moderate listings
+          </button>
+          <button className="btn ghost small" type="button" onClick={() => navigate("/admin/prices")}>
+            Publish prices
+          </button>
+          <button className="btn ghost small" type="button" onClick={() => navigate("/admin/activity")}>
+            Open audit
+          </button>
         </div>
-      </section>
+
+        <div className="admin-controls-end">
+          <span className="admin-controls-meta">
+            {formatCompact(usersTotal)} users · {formatCompact(openListings.length)} open listings ·{" "}
+            {formatCompact(highSignalActivity.length)} sensitive actions
+          </span>
+          <button className="btn ghost small" type="button" onClick={exportUsers}>
+            Export users
+          </button>
+          <button className="btn ghost small" type="button" onClick={exportActivity}>
+            Export audit
+          </button>
+          <button className="btn ghost small" type="button" onClick={refreshAll} title={`Last refresh ${lastRefresh ?? "--"}`}>
+            Refresh
+          </button>
+        </div>
+      </div>
 
       <div className="admin-kpi-grid">
         {[
@@ -882,7 +840,7 @@ export default function AdminDashboard() {
                 {alerts.slice(0, 5).map((alert) => (
                   <div key={alert.id} className="admin-mini-row">
                     <div>
-                      <strong>{alert.alert_type.toUpperCase()}</strong>
+                      <strong>{(alert.alert_type ?? "").toUpperCase() || "--"}</strong>
                       <p>
                         {alert.crop ?? "--"} | {alert.location?.district ?? "--"} | {alert.channel ?? "--"}
                       </p>

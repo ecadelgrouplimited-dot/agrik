@@ -202,12 +202,7 @@ export default function AdminActivity() {
 
   return (
     <section className="admin-page admin-activity-page">
-      <div className="admin-page-header">
-        <div>
-          <div className="label">Activity</div>
-          <h1>Audit log</h1>
-          <p className="muted">Filter by severity, actor, and entity so sensitive actions are readable at a glance.</p>
-        </div>
+      <div className="admin-page-header actions-only">
         <div className="admin-page-actions">
           <button className="btn ghost small" type="button" onClick={() => exportCsv(filteredItems)}>
             Export filtered

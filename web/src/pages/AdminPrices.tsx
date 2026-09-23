@@ -313,14 +313,6 @@ export default function AdminPrices() {
 
   return (
     <section className="admin-page">
-      <div className="admin-page-header">
-        <div>
-          <div className="label">Prices</div>
-          <h1>Market pricing desk</h1>
-          <p className="muted">Use real-data dropdowns to publish or update prices faster and consistently.</p>
-        </div>
-      </div>
-
       {error && <p className="status error">{error}</p>}
       {statusMessage && <p className="status">{statusMessage}</p>}
       <AdminActiveDateChips from={dateRange.from} to={dateRange.to} label="Captured date filter" />
@@ -511,30 +503,55 @@ export default function AdminPrices() {
         {filteredPrices.length === 0 ? (
           <p className="admin-empty">No prices to display.</p>
         ) : (
-          <div className="admin-table admin-price-history">
-            {filteredPrices.map((price) => (
-              <div
-                key={price.id}
-                className={`admin-row admin-price-row ${editingPriceId === price.id || selectedPrice?.id === price.id ? "active" : ""}`}
-                onClick={() => setSelectedPriceId(price.id)}
-              >
-                <div className="admin-row-main">
-                  <div className="tile-title">{price.crop}</div>
-                  <div className="tile-meta">
-                    {price.district || "--"} | {price.market || "--"} | {price.currency ?? "UGX"} {price.price}
-                  </div>
-                  <div className="admin-row-meta">Captured {formatDate(price.captured_at)}</div>
-                </div>
-                <div className="admin-actions">
-                  <span className={`pill ${price.captured_at && Date.now() - Date.parse(price.captured_at) <= 5 * 24 * 60 * 60 * 1000 ? "" : "pill-muted"}`}>
-                    {price.source ?? "manual"}
-                  </span>
-                  <button className="btn ghost small" type="button" onClick={(event) => { event.stopPropagation(); startEdit(price); }}>
-                    Edit
-                  </button>
-                </div>
-              </div>
-            ))}
+          <div className="admin-grid-wrap">
+            <table className="admin-grid">
+              <thead>
+                <tr>
+                  <th>Crop</th>
+                  <th>District</th>
+                  <th>Market</th>
+                  <th className="admin-grid-num">Price</th>
+                  <th>Source</th>
+                  <th>Captured</th>
+                  <th aria-label="Actions" />
+                </tr>
+              </thead>
+              <tbody>
+                {filteredPrices.map((price) => {
+                  const fresh = price.captured_at && Date.now() - Date.parse(price.captured_at) <= 5 * 24 * 60 * 60 * 1000;
+                  return (
+                    <tr
+                      key={price.id}
+                      className={editingPriceId === price.id || selectedPrice?.id === price.id ? "active" : ""}
+                      onClick={() => setSelectedPriceId(price.id)}
+                    >
+                      <td><strong>{price.crop}</strong></td>
+                      <td>{price.district || "--"}</td>
+                      <td>{price.market || "--"}</td>
+                      <td className="admin-grid-num">
+                        {price.currency ?? "UGX"} {price.price}
+                      </td>
+                      <td>
+                        <span className={`pill ${fresh ? "" : "pill-muted"}`}>{price.source ?? "manual"}</span>
+                      </td>
+                      <td>{formatDate(price.captured_at)}</td>
+                      <td>
+                        <button
+                          className="btn ghost small"
+                          type="button"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            startEdit(price);
+                          }}
+                        >
+                          Edit
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
         )}
       </section>

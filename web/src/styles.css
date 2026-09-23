@@ -4661,12 +4661,6 @@ a {
   align-items: center;
 }
 
-.admin-export-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
 .admin-meta {
   font-size: 12px;
   color: rgba(11, 11, 11, 0.6);
@@ -5354,46 +5348,6 @@ a {
   padding: 4px 7px;
 }
 
-.admin-user-list {
-  display: grid;
-  gap: 8px;
-}
-
-.admin-user-list-row {
-  position: relative;
-  border: 1px solid rgba(11, 11, 11, 0.1);
-  background: linear-gradient(145deg, rgba(255, 255, 255, 0.98), rgba(243, 248, 245, 0.96));
-  border-radius: 12px;
-  padding: 9px;
-  display: grid;
-  grid-template-columns: minmax(0, 1.7fr) minmax(280px, 1fr);
-  gap: 8px;
-  align-items: start;
-}
-
-.admin-user-list-main {
-  display: grid;
-  gap: 5px;
-}
-
-.admin-user-list-actions {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 6px;
-  align-items: end;
-}
-
-.admin-user-list-actions .btn {
-  min-height: 30px;
-  padding: 6px 10px;
-  font-size: 11px;
-}
-
-.admin-user-hover-card-list {
-  right: 8px;
-  top: 8px;
-}
-
 .admin-user-hover-card {
   position: absolute;
   right: 10px;
@@ -5851,10 +5805,6 @@ a {
     justify-content: flex-start;
   }
 
-  .admin-export-actions {
-    width: 100%;
-  }
-
   .admin-price-form-grid {
     grid-template-columns: repeat(2, minmax(160px, 1fr));
   }
@@ -5864,14 +5814,6 @@ a {
   }
 
   .admin-user-edit-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .admin-user-list-row {
-    grid-template-columns: 1fr;
-  }
-
-  .admin-user-list-actions {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
@@ -6050,6 +5992,13 @@ a {
 
   .mobile-fab {
     display: grid;
+  }
+
+  /* The floating action button sits over whatever is at the bottom of the viewport.
+     Leave it a landing strip so the last row of a page is never stuck underneath it. */
+  .farmer-content,
+  .admin-content {
+    padding-bottom: calc(88px + env(safe-area-inset-bottom, 0px));
   }
 
   .pwa-runtime-stack {
@@ -6246,14 +6195,6 @@ a {
 
   .admin-view-chip {
     flex: 1;
-  }
-
-  .admin-user-list-actions {
-    grid-template-columns: 1fr;
-  }
-
-  .admin-user-list-actions .btn {
-    width: 100%;
   }
 
   .admin-pagination {
@@ -10094,31 +10035,14 @@ a {
 .admin-alerts-page {
   gap: 16px;
 }
-
-.admin-command-hero,
 .admin-priority-grid,
 .admin-listings-layout {
   display: grid;
   gap: 14px;
 }
-
-.admin-command-hero,
 .admin-priority-grid {
   grid-template-columns: minmax(0, 1.35fr) minmax(320px, 0.85fr);
 }
-
-.admin-command-hero {
-  padding: 18px;
-  border-radius: 26px;
-  border: 1px solid rgba(15, 58, 38, 0.12);
-  background:
-    radial-gradient(circle at top right, rgba(31, 111, 61, 0.14), transparent 26%),
-    linear-gradient(145deg, rgba(244, 248, 244, 0.98), rgba(255, 255, 255, 0.94));
-  box-shadow: 0 22px 48px rgba(8, 24, 17, 0.08);
-}
-
-.admin-command-hero-main,
-.admin-command-hero-side,
 .admin-health-list,
 .admin-spotlight-list,
 .admin-mini-list,
@@ -10129,60 +10053,13 @@ a {
   display: grid;
   gap: 12px;
 }
-
-.admin-command-hero-main h2 {
-  margin: 0;
-  max-width: 16ch;
-  font-size: clamp(30px, 4vw, 48px);
-  line-height: 0.98;
-}
-
-.admin-command-hero-main .muted {
-  margin: 0;
-  max-width: 62ch;
-  line-height: 1.6;
-}
-
-.admin-command-hero-side {
-  align-content: start;
-  padding: 18px;
-  border-radius: 22px;
-  background: linear-gradient(145deg, rgba(15, 58, 38, 0.96), rgba(21, 86, 51, 0.92));
-  color: #f3f7f2;
-}
-
-.admin-command-hero-side .label,
-.admin-command-hero-side p,
-.admin-command-hero-side h3 {
-  color: inherit;
-}
-
-.admin-command-hero-side .label {
-  color: rgba(243, 247, 242, 0.72);
-}
-
 .admin-quick-action-row,
-.admin-command-notes,
 .admin-chip-row,
 .admin-bulk-bar {
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
 }
-
-.admin-command-notes span {
-  display: inline-flex;
-  align-items: center;
-  padding: 8px 12px;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.76);
-  border: 1px solid rgba(15, 58, 38, 0.12);
-  font-size: 12px;
-  font-weight: 700;
-  color: rgba(11, 11, 11, 0.68);
-}
-
-.admin-attention-list,
 .admin-queue-grid {
   display: grid;
   gap: 12px;
@@ -10191,8 +10068,6 @@ a {
 .admin-queue-grid {
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
 }
-
-.admin-attention-card,
 .admin-queue-card,
 .admin-spotlight-card,
 .admin-risk-item,
@@ -10202,15 +10077,11 @@ a {
   border-radius: 20px;
   background: rgba(255, 255, 255, 0.92);
 }
-
-.admin-attention-card,
 .admin-queue-card,
 .admin-spotlight-card {
   text-align: left;
   cursor: pointer;
 }
-
-.admin-attention-card,
 .admin-queue-card,
 .admin-risk-item,
 .admin-listing-card,
@@ -10218,38 +10089,6 @@ a {
 .admin-mini-row,
 .admin-health-item {
   padding: 14px;
-}
-
-.admin-attention-card {
-  display: grid;
-  grid-template-columns: auto 1fr auto;
-  align-items: start;
-  gap: 12px;
-  border-color: rgba(243, 247, 242, 0.14);
-  background: rgba(243, 247, 242, 0.08);
-  color: #f3f7f2;
-}
-
-.admin-attention-card p,
-.admin-attention-card strong,
-.admin-attention-card b {
-  color: inherit;
-}
-
-.admin-attention-card p {
-  margin: 4px 0 0;
-  color: rgba(243, 247, 242, 0.76);
-}
-
-.admin-attention-icon {
-  width: 34px;
-  height: 34px;
-  border-radius: 12px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(243, 247, 242, 0.12);
-  border: 1px solid rgba(243, 247, 242, 0.18);
 }
 
 .admin-queue-card,
@@ -10332,7 +10171,9 @@ a {
 
 .admin-users-layout {
   display: grid;
-  grid-template-columns: minmax(0, 1.45fr) minmax(320px, 0.85fr);
+  /* The directory is now a table with eight columns, so it gets the room; the detail
+     panel is read-at-a-glance and holds its shape at a fixed width. */
+  grid-template-columns: minmax(0, 1fr) 340px;
   gap: 14px;
   align-items: start;
 }
@@ -10354,8 +10195,7 @@ a {
   box-shadow: 0 20px 38px rgba(11, 33, 22, 0.1);
 }
 
-.admin-user-card.active,
-.admin-user-list-row.active {
+.admin-user-card.active {
   border-color: rgba(15, 58, 38, 0.24);
   box-shadow: 0 18px 34px rgba(11, 33, 22, 0.1);
 }
@@ -10542,7 +10382,9 @@ a {
 
 .admin-alert-compose-layout {
   display: grid;
-  grid-template-columns: minmax(0, 1.25fr) minmax(280px, 0.75fr);
+  /* The composer sits inside two nested splits, so its form column was landing at ~370px
+     and every field stacked one per row. Give the form the room and cap the preview. */
+  grid-template-columns: minmax(0, 1fr) 260px;
   gap: 14px;
   align-items: start;
 }
@@ -10556,7 +10398,7 @@ a {
 }
 
 .admin-alert-form-grid {
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(148px, 1fr));
 }
 
 .admin-alert-preview {
@@ -10637,7 +10479,6 @@ a {
 }
 
 @media (max-width: 1200px) {
-  .admin-command-hero,
   .admin-priority-grid,
   .admin-listings-layout,
   .admin-users-layout,
@@ -10653,9 +10494,6 @@ a {
 }
 
 @media (max-width: 760px) {
-  .admin-command-hero,
-  .admin-command-hero-side,
-  .admin-attention-card,
   .admin-queue-card,
   .admin-spotlight-card,
   .admin-risk-item,
@@ -10663,10 +10501,6 @@ a {
   .admin-activity-card,
   .admin-mini-row {
     border-radius: 18px;
-  }
-
-  .admin-command-hero {
-    padding: 14px;
   }
 
   .admin-quick-action-row .btn,
@@ -11687,4 +11521,188 @@ a {
 .fw-subtab.active {
   background: var(--color-primary);
   color: var(--color-white);
+}
+
+/* Second step of admin sign-in: the one-time code. */
+.admin-auth-code {
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: 0.32em;
+  text-align: center;
+}
+
+.admin-auth-expiry {
+  margin: -4px 0 0;
+  font-size: 12.5px;
+  color: rgba(11, 11, 11, 0.55);
+  text-align: center;
+}
+
+.admin-auth-links {
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.link-button {
+  border: 0;
+  background: none;
+  padding: 0;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--color-primary);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.link-button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+/* ---------------------------------------------------------------------------
+   Admin console: shared compact pieces
+   --------------------------------------------------------------------------- */
+
+/* A page header that carries only actions no longer needs the title block's spacing. */
+.admin-page-header.actions-only {
+  display: flex;
+  justify-content: flex-end;
+  margin: 0;
+}
+
+/* The row of range and jump-to controls that replaced the dashboard hero. */
+.admin-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border: 1px solid rgba(11, 11, 11, 0.07);
+  border-radius: 999px;
+  background: var(--color-white);
+}
+
+.admin-controls .admin-quick-action-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+}
+
+.admin-controls-meta {
+  margin-left: auto;
+  font-size: 12px;
+  color: rgba(11, 11, 11, 0.55);
+  white-space: nowrap;
+}
+
+/* Dense record tables. Directories are scanned, not read. */
+.admin-grid-wrap {
+  overflow-x: auto;
+  border: 1px solid rgba(11, 11, 11, 0.07);
+  border-radius: 12px;
+}
+
+.admin-grid {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12.5px;
+}
+
+.admin-grid th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  text-align: left;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(11, 11, 11, 0.5);
+  background: rgba(31, 111, 61, 0.05);
+  padding: 8px 10px;
+  white-space: nowrap;
+}
+
+.admin-grid td {
+  padding: 7px 10px;
+  border-top: 1px solid rgba(11, 11, 11, 0.06);
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+.admin-grid tbody tr {
+  cursor: pointer;
+}
+
+.admin-grid tbody tr:hover {
+  background: rgba(31, 111, 61, 0.04);
+}
+
+.admin-grid tbody tr.active {
+  background: rgba(31, 111, 61, 0.09);
+}
+
+.admin-grid td strong {
+  display: block;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.admin-grid-sub {
+  display: block;
+  font-size: 11.5px;
+  color: rgba(11, 11, 11, 0.55);
+}
+
+.admin-grid-check {
+  width: 34px;
+}
+
+.admin-grid-num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Account controls, moved out of every directory row and into the detail panel. */
+.admin-user-controls {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 8px;
+  align-items: end;
+}
+
+.admin-user-controls .btn {
+  grid-column: 1 / -1;
+}
+
+/* A card header that is just a name: no eyebrow, no stacked title block. */
+.admin-card-header.compact {
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.admin-card-header.compact h3 {
+  margin: 0;
+  font-size: 14px;
+}
+
+.admin-grid-actions {
+  display: flex;
+  gap: 4px;
+  justify-content: flex-end;
+}
+
+.admin-controls-end {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-left: auto;
+}
+
+.admin-controls-end .admin-controls-meta {
+  margin-left: 0;
 }

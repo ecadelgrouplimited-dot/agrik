@@ -203,14 +203,6 @@ export default function AdminServices() {
 
   return (
     <section className="admin-page">
-      <div className="admin-page-header">
-        <div>
-          <div className="label">Services</div>
-          <h1>Platform subscription services</h1>
-          <p className="muted">Internal AGRIK services users subscribe to (separate from marketplace offerings).</p>
-        </div>
-      </div>
-
       {error && <p className="status error">{error}</p>}
       {statusMessage && <p className="status">{statusMessage}</p>}
 

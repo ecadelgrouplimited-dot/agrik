@@ -363,14 +363,6 @@ export default function AdminListings() {
 
   return (
     <section className="admin-page admin-listings-page">
-      <div className="admin-page-header">
-        <div>
-          <div className="label">Listings</div>
-          <h1>Moderation workspace</h1>
-          <p className="muted">Triage weak records, apply bulk actions, and inspect listing detail without losing context.</p>
-        </div>
-      </div>
-
       {error && <p className="status error">{error}</p>}
       {statusMessage && <p className="status">{statusMessage}</p>}
       <AdminActiveDateChips from={dateRange.from} to={dateRange.to} />
