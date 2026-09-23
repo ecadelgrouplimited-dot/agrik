@@ -30,6 +30,7 @@ const FarmerMarketOverview = lazy(() => import("./pages/FarmerMarketOverview"));
 const FarmerMarketSell = lazy(() => import("./pages/FarmerMarketSell"));
 const FarmerMarketListings = lazy(() => import("./pages/FarmerMarketListings"));
 const FarmerMarketDiscover = lazy(() => import("./pages/FarmerMarketDiscover"));
+const FarmerMarketPrices = lazy(() => import("./pages/FarmerMarketPrices"));
 const FarmerMarketProviders = lazy(() => import("./pages/FarmerMarketProviders"));
 const FarmerServices = lazy(() => import("./pages/FarmerServices"));
 const FarmerSubscriptions = lazy(() => import("./pages/FarmerSubscriptions"));
@@ -111,6 +112,7 @@ export default function App() {
             <Route index element={<FarmerMarketOverview />} />
             <Route path="sell" element={<FarmerMarketSell />} />
             <Route path="listings" element={<FarmerMarketListings />} />
+            <Route path="prices" element={<FarmerMarketPrices />} />
             <Route path="discover" element={<FarmerMarketDiscover />} />
             <Route path="providers" element={<FarmerMarketProviders />} />
           </Route>

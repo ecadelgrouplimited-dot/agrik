@@ -55,8 +55,20 @@ export const DEFAULT_PRICE_SEED: { crop: string; price: number }[] = [
   { crop: "tomato", price: 2000 },
 ];
 
-/** The districts the seeded board covers. Kept short so the board stays readable. */
-export const DEFAULT_PRICE_DISTRICTS = ["Kampala", "Mbale", "Gulu", "Mbarara", "Lira", "Masaka"];
+/**
+ * The districts the seeded board covers, each with a multiplier against the base price.
+ * Produce is generally dearer near Kampala's demand and cheaper in the producing north,
+ * which is the whole point of a price board: a flat number in every district would tell a
+ * farmer nothing about where to sell. These ratios are illustrative, not surveyed.
+ */
+export const DEFAULT_PRICE_DISTRICTS: { name: string; factor: number }[] = [
+  { name: "Kampala", factor: 1.15 },
+  { name: "Masaka", factor: 1.04 },
+  { name: "Mbarara", factor: 1.0 },
+  { name: "Mbale", factor: 0.95 },
+  { name: "Lira", factor: 0.9 },
+  { name: "Gulu", factor: 0.86 },
+];
 
 export const SERVICE_TYPES = [
   "mechanization",

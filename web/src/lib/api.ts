@@ -553,7 +553,20 @@ export const api = {
     request(`/market/services/${serviceId}`, {
       method: "DELETE",
     }),
-  marketPrices: (query = "") => request<{ items: unknown[] }>(`/market/prices${query}`),
+  marketPrices: (query = "") =>
+    request<{
+      items: {
+        id: number;
+        crop: string;
+        market?: string | null;
+        district?: string | null;
+        price: number;
+        currency: string;
+        /** "placeholder" means seeded, not surveyed — the UI must say so. */
+        source?: string | null;
+        captured_at: string;
+      }[];
+    }>(`/market/prices${query}`),
   marketIntel: (query = "") =>
     request<{
       prices: unknown[];

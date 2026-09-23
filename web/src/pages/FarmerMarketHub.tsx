@@ -284,6 +284,7 @@ const marketSections = [
   { path: "/dashboard/market", icon: "overview" as const, label: "Overview", subtitle: "Posture & signals" },
   { path: "/dashboard/market/sell", icon: "plus" as const, label: "Sell", subtitle: "Publish a listing" },
   { path: "/dashboard/market/listings", icon: "farm" as const, label: "My listings", subtitle: "Manage published records" },
+  { path: "/dashboard/market/prices", icon: "prices" as const, label: "Prices", subtitle: "What crops are fetching" },
   { path: "/dashboard/market/discover", icon: "listings" as const, label: "Discover", subtitle: "Browse open listings" },
   { path: "/dashboard/market/providers", icon: "services" as const, label: "Providers", subtitle: "Service directory" },
 ];

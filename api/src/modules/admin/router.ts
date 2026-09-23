@@ -458,7 +458,9 @@ router.post(
   "/prices/seed",
   asyncHandler(async (req, res) => {
     const body = priceSeedSchema.parse(req.body);
-    const districts = body.districts?.length ? body.districts : DEFAULT_PRICE_DISTRICTS;
+    const districts = body.districts?.length
+      ? body.districts.map((name) => ({ name, factor: 1 }))
+      : DEFAULT_PRICE_DISTRICTS;
     const crops = body.crops?.length
       ? DEFAULT_PRICE_SEED.filter((row) => body.crops!.includes(row.crop))
       : DEFAULT_PRICE_SEED;
@@ -470,12 +472,13 @@ router.post(
 
     const rows = crops.flatMap((row) =>
       districts
-        .filter((district) => !have.has(`${row.crop}|${district}`))
+        .filter((district) => !have.has(`${row.crop}|${district.name}`))
         .map((district) => ({
           crop: row.crop,
-          district,
-          market: `${district} main market`,
-          price: row.price,
+          district: district.name,
+          market: `${district.name} main market`,
+          // Rounded to the nearest 50 so the board reads like money, not a calculation.
+          price: Math.round((row.price * district.factor) / 50) * 50,
           currency: "UGX",
           // Self-labelling: the console and the farmer view both show this.
           source: "placeholder",
