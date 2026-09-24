@@ -492,41 +492,33 @@ export default function ProviderLeads() {
 
               return (
                 <article key={item.id} className={`provider-lead-item ${isStarred ? "starred" : ""}`}>
+                  {/* One scannable line per lead. The four-metric grid and the full
+                      description made each lead ~380px, so thirty of them ran to
+                      11,000px on a phone; the detail is one tap away instead. */}
                   <div className="provider-lead-main">
                     <div className="provider-lead-top">
                       <div className="provider-lead-titleblock">
                         <strong>{item.crop || "Unspecified crop"}</strong>
-                        <span>{[item.parish, item.district].filter(Boolean).join(", ") || "Location not set"}</span>
+                        <span>
+                          {[item.parish, item.district].filter(Boolean).join(", ") || "Location not set"}
+                          {item.quantity != null ? ` · ${item.quantity} ${item.unit || "units"}` : ""}
+                          {item.price != null ? ` · ${formatMoney(item.price, item.currency || "UGX")}` : " · negotiable"}
+                          {` · ${formatCompactDate(item.createdAt)}`}
+                        </span>
                       </div>
                       <span className="provider-score-pill">Score {score}</span>
                     </div>
-                    <div className="provider-lead-metrics">
-                      <div className="provider-lead-metric">
-                        <span>Quantity</span>
-                        <strong>{item.quantity != null ? `${item.quantity} ${item.unit || "units"}` : "Open"}</strong>
-                      </div>
-                      <div className="provider-lead-metric">
-                        <span>Price</span>
-                        <strong>{item.price != null ? formatMoney(item.price, item.currency || "UGX") : "Negotiable"}</strong>
-                      </div>
-                      <div className="provider-lead-metric">
-                        <span>Media</span>
-                        <strong>{item.mediaUrls.length > 0 ? `${item.mediaUrls.length} file${item.mediaUrls.length === 1 ? "" : "s"}` : "None"}</strong>
-                      </div>
-                      <div className="provider-lead-metric">
-                        <span>Published</span>
-                        <strong>{formatCompactDate(item.createdAt)}</strong>
-                      </div>
-                    </div>
-                    <p className="provider-lead-description">{item.description || "No description provided."}</p>
                     <div className="provider-chip-row">
                       {isContacted ? <span className="provider-status-pill status-open">Contacted</span> : <span className="provider-status-pill status-paused">New</span>}
-                      {item.mediaUrls.length > 0 ? <span className="provider-status-pill status-open">Evidence</span> : null}
+                      {item.mediaUrls.length > 0 ? (
+                        <span className="provider-status-pill status-open">{item.mediaUrls.length} photo{item.mediaUrls.length === 1 ? "" : "s"}</span>
+                      ) : null}
                       {item.district && serviceDistricts.has(item.district) ? <span className="provider-status-pill status-open">District fit</span> : null}
                       {item.crop && focusCrops.map((crop) => crop.toLowerCase()).includes(item.crop.toLowerCase()) ? (
                         <span className="provider-status-pill status-open">Crop fit</span>
                       ) : null}
                     </div>
+                    {item.description ? <p className="provider-lead-description">{item.description}</p> : null}
                   </div>
 
                   <div className="provider-lead-actions">

@@ -62,3 +62,13 @@ no nested scroll.
 
 A buyer opening `/buyer` on a phone sees produce they could actually buy today, in under
 one screen of scroll, with a way to call the seller; and `/buyer/market` fits the phone.
+
+## Status — built 2026-09-24
+
+Done: the dashboard is a sourcing view (available lots ranked by the buyer's own crops
+then evidence then recency, their open requests with offer counts, cheapest on the board),
+"with photos" is a filter and a badge, and every lot carries a Call seller action.
+879px of menu became 2,772px of produce on a phone, with no empty figures.
+
+Not done: `/buyer/market` is still 11,333px and needs the same compaction the farmer
+marketplace got. That is the next piece of buyer work.

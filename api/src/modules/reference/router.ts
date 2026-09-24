@@ -3,6 +3,7 @@ import { prisma } from "../../lib/prisma.js";
 import { asyncHandler } from "../../middleware/errorHandler.js";
 import { badRequest } from "../../lib/http-error.js";
 import { CROPS, ONBOARDING_ROLES, SERVICE_CATEGORY_OPTIONS } from "./config.js";
+import { districtPlantingDemand } from "./planting.js";
 
 const router = Router();
 
@@ -233,5 +234,29 @@ router.get(
     });
   })
 );
+
+
+/**
+ * What farmers in each district recorded planting, for input suppliers deciding what to
+ * stock. Coverage is returned with the data because planting dates are sparse.
+ */
+router.get("/planting-demand", async (req, res, next) => {
+  try {
+    const windowDays = Math.min(Math.max(Number(req.query.window_days ?? 60) || 60, 7), 365);
+    const districts = await districtPlantingDemand(windowDays);
+    res.json({
+      window_days: windowDays,
+      districts,
+      coverage: {
+        districts: districts.length,
+        farms_total: districts.reduce((sum, d) => sum + d.farms_total, 0),
+        farms_with_crops: districts.reduce((sum, d) => sum + d.farms_with_crops, 0),
+        farms_with_dates: districts.reduce((sum, d) => sum + d.farms_with_dates, 0),
+      },
+    });
+  } catch (err) {
+    next(err);
+  }
+});
 
 export default router;

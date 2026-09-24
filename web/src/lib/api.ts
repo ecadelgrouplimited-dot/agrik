@@ -424,6 +424,20 @@ export const api = {
         last_updated_at?: string | null;
       }[];
     }>("/reference/uganda/live-map"),
+  plantingDemand: (windowDays = 60) =>
+    request<{
+      window_days: number;
+      districts: {
+        district: string;
+        farms_with_crops: number;
+        farms_total: number;
+        farms_with_dates: number;
+        crops: { crop: string; farms: number }[];
+        next_planting: string | null;
+        planting_in_window: number;
+      }[];
+      coverage: { districts: number; farms_total: number; farms_with_crops: number; farms_with_dates: number };
+    }>(`/reference/planting-demand?window_days=${windowDays}`),
   onboardingOptions: () => request<OnboardingOptionsOut>("/reference/onboarding/options"),
   contactTopics: () => request<{ topics: string[] }>("/contact/topics"),
   sendContactMessage: (payload: {

@@ -56,6 +56,22 @@ Shared rules:
 - **Separate a real role from an alias deliberately.** Where a role genuinely differs,
   give it its own surface. Where it does not, say so in its plan and let it share.
 
+## Status
+
+All four plans have been built to the point their own status sections describe, on
+2026-09-24. Measured again at 390x844 afterwards:
+
+| Role | Before | After |
+|---|---|---|
+| buyer `/buyer` | 879px of menu | 2,772px of produce |
+| offtaker `/buyer` | identical to buyer | its own sourcing panel |
+| service provider `/provider` | 4,911px, 10 sections | 2,755px, 3 sections |
+| service provider `/provider/leads` | 11,384px | 6,916px |
+| input supplier | identical to provider | `/provider/planting`, its own |
+
+No horizontal overflow and no control under 40px on any role page. The farmer routes were
+swept afterwards for regressions from the shared CSS: clean.
+
 ## Plans
 
 - [buyer.md](buyer.md) — spot buyers sourcing produce now

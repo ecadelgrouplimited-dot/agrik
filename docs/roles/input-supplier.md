@@ -51,3 +51,20 @@ difference between these two roles is one screen, not four.
 
 An input supplier sees a planting-demand view their service-provider counterpart does not,
 with its data coverage stated plainly, and shares the rest of the shell.
+
+## Status — built 2026-09-24
+
+Done: `/provider/planting` aggregates farmer crop profiles and planting dates by
+district, showing what to stock overall and per district. It appears in the navigation
+only for `input_supplier`, so the role now differs from a service provider by exactly
+the one screen this plan argued for.
+
+The coverage caveat is enforced in the UI: the page states how many farms have a crop
+profile and what share recorded a planting date, and says outright when no planting date
+exists so the crop mix is trustworthy but the timing is not. In production today that
+reads 5 of 5 farms with crops, 2 with dates.
+
+One change the plan did not anticipate: the aggregation falls back to `Identity.crops`
+when `FarmProfile.crops` is empty. Onboarding writes to the former and the farm workspace
+to the latter, so reading only the farm profile made every farmer who signed up but never
+opened the workspace invisible — which was most of them.

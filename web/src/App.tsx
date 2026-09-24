@@ -47,6 +47,7 @@ const ProviderDashboard = lazy(() => import("./pages/ProviderDashboard"));
 const ProviderMarketplace = lazy(() => import("./pages/ProviderMarketplace"));
 const ProviderLeads = lazy(() => import("./pages/ProviderLeads"));
 const ProviderMarketing = lazy(() => import("./pages/ProviderMarketing"));
+const SupplierPlanting = lazy(() => import("./pages/SupplierPlanting"));
 const PublicMarketplace = lazy(() => import("./pages/PublicMarketplace"));
 const ContactPage = lazy(() => import("./pages/ContactPage"));
 const PublicListingDetails = lazy(() => import("./pages/PublicListingDetails"));
@@ -135,6 +136,7 @@ export default function App() {
           <Route path="services" element={<ProviderMarketplace />} />
           <Route path="leads" element={<ProviderLeads />} />
           <Route path="marketing" element={<ProviderMarketing />} />
+          <Route path="planting" element={<SupplierPlanting />} />
           <Route path="market" element={<Navigate to="/provider/services" replace />} />
         </Route>
         <Route element={<AppLayout />}>

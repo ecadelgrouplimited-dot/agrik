@@ -61,3 +61,14 @@ a panel beside it.
 
 `/provider` fits roughly one and a half screens on a phone, every figure shown has a
 value, and `/provider/leads` is a table. No control under 40px.
+
+## Status — built 2026-09-24
+
+Done: the overview is three answers (leads worth acting on, where demand is strongest,
+catalog quality), down from ten sections. The hero headline and six mostly-zero stat
+cards became one bar. 4,911px to 2,755px, and empty figures from nine to zero. Leads
+went from ~380px cards to scannable rows, 11,384px to 6,916px. Every control is 40px.
+
+Not done: leads is a compact list rather than the table the plan called for. The row
+carries the same information; a table with a detail panel is still the better shape if
+a provider ever works a long queue.

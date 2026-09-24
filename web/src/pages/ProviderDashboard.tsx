@@ -342,93 +342,23 @@ export default function ProviderDashboard() {
 
   return (
     <section className="farmer-page provider-page provider-overview-neo">
-      <div className="provider-overview-hero">
-        <div className="provider-overview-hero-main">
-          <div className="section-title-with-icon">
-            <span className="section-icon">
-              <Icon name="overview" size={18} />
-            </span>
-            <div>
-              <div className="label">Provider overview</div>
-              <h1>Run services, demand, and growth from one dashboard.</h1>
-              <p className="muted">{overviewSummary}</p>
-            </div>
-          </div>
-          <div className="provider-header-actions">
-            <NavLink to="/provider/services" className="btn small">
-              Manage services
-            </NavLink>
-            <NavLink to="/provider/leads" className="btn ghost small">
-              Review leads
-            </NavLink>
-            <NavLink to="/provider/marketing" className="btn ghost small">
-              Open marketing
-            </NavLink>
-          </div>
-          <div className="provider-overview-tags">
-            {(focusTags.length ? focusTags : ["Provider portal", "Live demand"]).map((tag) => (
-              <span key={tag}>{tag}</span>
-            ))}
-          </div>
+      {/* One bar instead of a hero and six mostly-zero stat cards. The three answers a
+          provider needs are below: who to call, where demand is, and whether the
+          catalog is findable. */}
+      <div className="fw-bar">
+        <span className="fw-farm-label">Provider</span>
+        <span className="fw-farm-meta">{overviewSummary}</span>
+        <div className="fw-actions">
+          <NavLink to="/provider/services" className="btn small">
+            Manage services
+          </NavLink>
+          <NavLink to="/provider/leads" className="btn ghost small">
+            Review leads
+          </NavLink>
+          <NavLink to="/provider/marketing" className="btn ghost small">
+            Marketing
+          </NavLink>
         </div>
-
-        <aside className="provider-overview-hero-side">
-          <div className="provider-panel-header">
-            <div>
-              <div className="label">Next actions</div>
-              <h3>Today</h3>
-            </div>
-          </div>
-          <div className="provider-priority-list">
-            {priorityActions.map((item) => (
-              <NavLink key={item.title} to={item.to} className="provider-priority-card">
-                <span className="provider-priority-icon">
-                  <Icon name={item.icon} size={18} />
-                </span>
-                <div>
-                  <strong>{item.title}</strong>
-                  <p>{item.detail}</p>
-                  <span>{item.action}</span>
-                </div>
-              </NavLink>
-            ))}
-          </div>
-        </aside>
-      </div>
-
-      {error ? <p className="status error">{error}</p> : null}
-
-      <div className="provider-kpi-grid provider-kpi-grid-rich">
-        <article className="provider-kpi-card">
-          <div className="provider-kpi-label">Published services</div>
-          <div className="provider-kpi-value">{myServices.length}</div>
-          <div className="provider-kpi-meta">{openServices} open now</div>
-        </article>
-        <article className="provider-kpi-card">
-          <div className="provider-kpi-label">Coverage districts</div>
-          <div className="provider-kpi-value">{serviceDistricts.size}</div>
-          <div className="provider-kpi-meta">Live service footprint</div>
-        </article>
-        <article className="provider-kpi-card">
-          <div className="provider-kpi-label">Matched leads</div>
-          <div className="provider-kpi-value">{matchedLeads}</div>
-          <div className="provider-kpi-meta">{matchRate}% of open demand</div>
-        </article>
-        <article className="provider-kpi-card">
-          <div className="provider-kpi-label">Offers sent</div>
-          <div className="provider-kpi-value">{myOffers.length}</div>
-          <div className="provider-kpi-meta">{contactRate}% contact rate</div>
-        </article>
-        <article className="provider-kpi-card">
-          <div className="provider-kpi-label">Average quote</div>
-          <div className="provider-kpi-value">{avgQuote != null ? formatMoney(avgQuote, "UGX") : "--"}</div>
-          <div className="provider-kpi-meta">From submitted offers</div>
-        </article>
-        <article className="provider-kpi-card">
-          <div className="provider-kpi-label">Catalog hygiene</div>
-          <div className="provider-kpi-value">{servicesMissingPrice + staleServices}</div>
-          <div className="provider-kpi-meta">Items needing cleanup</div>
-        </article>
       </div>
 
       <div className="provider-dashboard-grid">
@@ -513,32 +443,7 @@ export default function ProviderDashboard() {
             )}
           </section>
 
-          <section className="farmer-card provider-panel">
-            <div className="provider-panel-header">
-              <div>
-                <div className="label">Recent operations</div>
-                <h3>Latest service and offer activity</h3>
-              </div>
-            </div>
-            {recentActivities.length === 0 ? (
-              <p className="muted">No recent activity yet.</p>
-            ) : (
-              <div className="provider-activity-list">
-                {recentActivities.map((item) => (
-                  <NavLink key={item.id} to={item.to} className="provider-activity-item">
-                    <span className="provider-activity-icon">
-                      <Icon name={item.icon} size={16} />
-                    </span>
-                    <div>
-                      <strong>{item.title}</strong>
-                      <p>{item.detail}</p>
-                      <span>{item.meta}</span>
-                    </div>
-                  </NavLink>
-                ))}
-              </div>
-            )}
-          </section>
+          
         </div>
 
         <div className="provider-dashboard-side">
@@ -568,67 +473,11 @@ export default function ProviderDashboard() {
             </div>
           </section>
 
-          <section className="farmer-card provider-panel">
-            <div className="provider-panel-header">
-              <div>
-                <div className="label">Pipeline health</div>
-                <h3>Demand response snapshot</h3>
-              </div>
-            </div>
-            <div className="provider-mini-stat-grid">
-              {pipelineHealth.map((item) => (
-                <article key={item.label} className="provider-mini-stat">
-                  <span>{item.label}</span>
-                  <strong>{item.value}</strong>
-                  <p>{item.detail}</p>
-                </article>
-              ))}
-            </div>
-          </section>
+          
 
-          <section className="farmer-card provider-panel">
-            <div className="provider-panel-header">
-              <div>
-                <div className="label">Price watch</div>
-                <h3>Recent market price signal</h3>
-              </div>
-            </div>
-            {bestPrices.length === 0 ? (
-              <p className="muted">No pricing signal available yet.</p>
-            ) : (
-              <div className="provider-price-list">
-                {bestPrices.map((item, index) => (
-                  <article key={`${item.crop}-${item.district}-${index}`} className="provider-price-row">
-                    <div>
-                      <strong>{item.crop}</strong>
-                      <span>{[item.district, formatCompactDate(item.capturedAt)].filter(Boolean).join(" | ")}</span>
-                    </div>
-                    <strong>{formatMoney(item.price, item.currency)}</strong>
-                  </article>
-                ))}
-              </div>
-            )}
-          </section>
+          
 
-          <section className="farmer-card provider-panel">
-            <div className="provider-panel-header">
-              <div>
-                <div className="label">Readiness</div>
-                <h3>Execution checklist</h3>
-              </div>
-            </div>
-            <div className="provider-checklist">
-              {checklist.map((item) => (
-                <article key={item.label} className={`provider-check-item ${item.done ? "done" : ""}`}>
-                  <div>
-                    <strong>{item.label}</strong>
-                    <p>{item.detail}</p>
-                  </div>
-                  <span className={`provider-check-pill ${item.done ? "done" : "pending"}`}>{item.done ? "Done" : "Pending"}</span>
-                </article>
-              ))}
-            </div>
-          </section>
+          
         </div>
       </div>
     </section>

@@ -60,3 +60,12 @@ counterparty. Then the progress view becomes real:
 
 Phase 1: an offtaker sees a supplier list and their own sourcing activity, and the page is
 visibly not the buyer's page. Phase 2 is gated on a real user asking.
+
+## Status — built 2026-09-24
+
+Phase 1 done: an offtaker gets the buyer sourcing view plus a "Sourcing so far" panel
+counting offers made, distinct suppliers and districts, with a line stating plainly that
+volume commitments are not tracked so this is activity rather than progress. The role is
+now visibly not the buyer's page.
+
+Phase 2 not started, and deliberately so — no offtaker has ever signed in.

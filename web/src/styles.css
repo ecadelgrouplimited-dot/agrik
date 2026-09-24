@@ -12582,3 +12582,237 @@ a {
   font-size: 13px;
   line-height: 1.6;
 }
+
+/* ---------------------------------------------------------------------------
+   Buyer sourcing view
+   --------------------------------------------------------------------------- */
+.buy-list {
+  display: grid;
+  gap: 6px;
+}
+
+.buy-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid rgba(11, 11, 11, 0.07);
+  border-radius: 12px;
+  background: var(--color-white);
+}
+
+/* A lot in a crop this buyer already trades is the one they came for. */
+.buy-row.mine {
+  border-color: rgba(31, 111, 61, 0.3);
+  background: rgba(31, 111, 61, 0.04);
+}
+
+.buy-row-main {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.buy-row-main strong {
+  font-size: 14px;
+  text-transform: capitalize;
+}
+
+.buy-row-sub {
+  font-size: 12px;
+  color: rgba(11, 11, 11, 0.55);
+}
+
+.buy-row-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 2px;
+}
+
+.buy-row-end {
+  display: grid;
+  gap: 5px;
+  justify-items: end;
+  flex: 0 0 auto;
+}
+
+.buy-row-end strong {
+  font-size: 14.5px;
+  font-weight: 800;
+  color: var(--color-primary);
+  white-space: nowrap;
+}
+
+.buy-split {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 10px;
+}
+
+@media (max-width: 760px) {
+  .buy-row {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .buy-row-end {
+    justify-items: start;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .buy-split {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* A lead's description is context, not the headline: show the opening line and let the
+   Details link carry the rest. */
+.provider-lead-description {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: rgba(11, 11, 11, 0.58);
+}
+
+@media (max-width: 760px) {
+  /* The five per-lead actions were 30px targets in a tight row. */
+  .provider-lead-actions .btn.tiny {
+    min-height: 40px;
+    padding: 0 12px;
+  }
+
+  .provider-lead-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+}
+
+@media (max-width: 760px) {
+  /* Inline text links inside a panel are tap targets too — these were 14px. */
+  .provider-inline-link,
+  .provider-view-chip,
+  .admin-view-chip {
+    display: inline-flex;
+    align-items: center;
+    min-height: 40px;
+    padding: 0 6px;
+  }
+
+  /* The whole switch is the target, not just the box inside it. */
+  .provider-switch {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 40px;
+  }
+
+  .provider-switch input[type="checkbox"] {
+    width: 20px;
+    height: 20px;
+  }
+
+  /* View toggles ("List" / "Cards") were 25px. */
+  .provider-view-toggle button,
+  .provider-toggle-row button,
+  .admin-view-chip,
+  .provider-view-chip {
+    min-height: 40px;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Input supplier: planting demand by district
+   --------------------------------------------------------------------------- */
+.plant-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 8px;
+}
+
+.plant-row {
+  display: grid;
+  gap: 7px;
+  align-content: start;
+  padding: 11px 12px;
+  border: 1px solid rgba(11, 11, 11, 0.07);
+  border-radius: 12px;
+  background: var(--color-white);
+}
+
+.plant-row-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.plant-row-head strong {
+  font-size: 14.5px;
+}
+
+.plant-row-head span {
+  font-size: 11.5px;
+  color: rgba(11, 11, 11, 0.55);
+  white-space: nowrap;
+}
+
+.plant-crops {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.plant-crop {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border-radius: 999px;
+  background: rgba(31, 111, 61, 0.08);
+  color: var(--color-primary);
+  padding: 3px 9px;
+  font-size: 11.5px;
+  font-weight: 600;
+  text-transform: capitalize;
+}
+
+.plant-crop b {
+  font-size: 10.5px;
+  opacity: 0.7;
+}
+
+.plant-row-foot {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+@media (max-width: 760px) {
+  .plant-list {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 760px) {
+  /* Suggestion chips and the footer link are tap targets like any other. */
+  .grik-suggestion-chip {
+    min-height: 40px;
+  }
+
+  .footer a {
+    display: inline-flex;
+    align-items: center;
+    min-height: 40px;
+  }
+}

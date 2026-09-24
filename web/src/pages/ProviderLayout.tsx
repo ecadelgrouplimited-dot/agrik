@@ -15,6 +15,16 @@ const navItems = [
 
 export default function ProviderLayout() {
   const { user, logout } = useAuth();
+  // Planting demand is what separates an input supplier from a service provider: they
+  // stock against the planting calendar rather than answering individual requests.
+  const items =
+    user?.role === "input_supplier"
+      ? [
+          ...navItems.slice(0, 1),
+          { label: "Planting", path: "/provider/planting", subtitle: "What is going in the ground", icon: "farm" as const },
+          ...navItems.slice(1),
+        ]
+      : navItems;
   const [menuOpen, setMenuOpen] = useState(false);
   const location = useLocation();
 
@@ -24,7 +34,7 @@ export default function ProviderLayout() {
 
   const current = useMemo(() => {
     return (
-      navItems.find((item) => (item.path === "/provider" ? location.pathname === "/provider" : location.pathname.startsWith(item.path))) || navItems[0]
+      items.find((item) => (item.path === "/provider" ? location.pathname === "/provider" : location.pathname.startsWith(item.path))) || items[0]
     );
   }, [location.pathname]);
 
@@ -36,7 +46,7 @@ export default function ProviderLayout() {
           <BrandLogo subtitle="Provider Portal" compact />
         </div>
         <nav className="farmer-nav">
-          {navItems.map((item) => (
+          {items.map((item) => (
             <NavLink
               key={item.path}
               to={item.path}
